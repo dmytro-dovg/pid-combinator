@@ -1,0 +1,11 @@
+{
+    "name": "pid-combinator",
+    "description": "PID combinator.",
+    "version": "0.0.1",
+    "title": "PID Combinator",
+    "author": "imoth_f",
+    "factorio_version": "2.1",
+    "dependencies": [
+        "base >= 2.1"
+    ]
+}
