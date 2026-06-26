@@ -2,12 +2,6 @@ local function debugp(msg)
     localised_print("[PID CONTROLLER]: " .. msg)
 end
 
-local signals = {
-    pv = { name = "signal-V", type = "virtual" },
-    sp = { name = "signal-S", type = "virtual" },
-    out = { name = "signal-O", type = "virtual" },
-}
-
 local connector_id = {
     input = {
         red = defines.wire_connector_id.combinator_input_red,
@@ -72,6 +66,11 @@ local function on_built(event)
         kp = 1.0, ki = 0.0, kd = 0.0,
         dt = 0.016667, -- 60 UPS
         max_integral = 200, -- anti-windup
+        signals = {
+            pv = { name = "signal-V", type = "virtual" },
+            sp = { name = "signal-S", type = "virtual" },
+            out = { name = "signal-O", type = "virtual" },
+        },
         -- PID state
         integral = 0,
         prev_error = 0,
@@ -143,13 +142,13 @@ local function process_pid(state, dt)
     local max_integral = state.max_integral
     -- TODO: toggle networks
     if red_network then
-        pv = pv + (red_network.get_signal(signals.pv) or 0)
-        sp = sp + (red_network.get_signal(signals.sp) or 0)
+        pv = pv + (red_network.get_signal(state.signals.pv) or 0)
+        sp = sp + (red_network.get_signal(state.signals.sp) or 0)
     end
 
     if green_network then
-        pv = pv + (green_network.get_signal(signals.pv) or 0)
-        sp = sp + (green_network.get_signal(signals.sp) or 0)
+        pv = pv + (green_network.get_signal(state.signals.pv) or 0)
+        sp = sp + (green_network.get_signal(state.signals.sp) or 0)
     end
 
     local error = sp - pv
