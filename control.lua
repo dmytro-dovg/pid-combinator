@@ -2,6 +2,12 @@ local function debugp(msg)
     localised_print("[PID CONTROLLER]: " .. msg)
 end
 
+local signals = {
+    pv = { name = "signal-V", type = "virtual" },
+    sp = { name = "signal-S", type = "virtual" },
+    out = { name = "signal-O", type = "virtual" },
+}
+
 local connector_id = {
     input = {
         red = defines.wire_connector_id.combinator_input_red,
@@ -62,15 +68,13 @@ local function on_built(event)
     storage.pid[entity.unit_number] = {
         entity = entity,
         output_entity = output_entity,
-        -- PID coefficients 
+        -- PID settings
         kp = 1.0, ki = 0.0, kd = 0.0,
+        dt = 0.016667, -- 60 UPS
+        max_integral = 200, -- anti-windup
         -- PID state
         integral = 0,
         prev_error = 0,
-        -- Signals
-        pv_signal = { name = "signal-P", type = "virtual" },
-        sp_signal = { name = "signal-S", type = "virtual" },
-        out_signal = { name = "signal-O", type = "virtual" },
     }
 end
 
@@ -112,7 +116,13 @@ for _, event in pairs(on_removed_events) do
     script.on_event(event, on_removed, {{filter="name", name="pid-combinator"}})
 end
 
-local UPDATE_RATE = 1
+script.on_event(defines.events.on_gui_click, function(event)
+  if event.element.name == "close_button" then
+    local player = game.get_player(event.player_index)
+    player.gui.center["my_frame"].destroy()
+    player.opened = nil
+  end
+end)
 
 local function process_pid(state, dt)
     local entity = state.entity
@@ -127,40 +137,43 @@ local function process_pid(state, dt)
 
     local pv = 0
     local sp = 0
+    local kp = state.kp
+    local ki = state.ki
+    local kd = state.kd
+    local max_integral = state.max_integral
     -- TODO: toggle networks
     if red_network then
-        pv = pv + (red_network.get_signal(state.pv_signal) or 0)
-        sp = sp + (red_network.get_signal(state.sp_signal) or 0)
+        pv = pv + (red_network.get_signal(signals.pv) or 0)
+        sp = sp + (red_network.get_signal(signals.sp) or 0)
     end
 
     if green_network then
-        pv = pv + (green_network.get_signal(state.pv_signal) or 0)
-        sp = sp + (green_network.get_signal(state.sp_signal) or 0)
+        pv = pv + (green_network.get_signal(signals.pv) or 0)
+        sp = sp + (green_network.get_signal(signals.sp) or 0)
     end
 
     local error = sp - pv
     debugp("pv = " .. pv .. ", sp = " .. sp .. ", error = " .. error)
-    state.integral = math.max(-200, math.min(200, state.integral + error * dt))
-    local derivative = (error - state.prev_error) / dt
+
+    -- Clamp integral to prevent windup
+    state.integral = math.max(-max_integral, math.min(max_integral, state.integral + error * state.dt))
+    local derivative = (error - state.prev_error) / state.dt
     state.prev_error = error
-    local output = 2.0 * error
-        + 1 * state.integral
-        + 0.6 * derivative
+    local output = kp * error
+        + ki * state.integral
+        + kd * derivative
 
     write_output(state.output_entity, math.floor(output))
 end
 
 script.on_event(defines.events.on_tick, function(event)
-    if event.tick % UPDATE_RATE ~= 0 then return end
     if not storage.pid then return end
-
-    local dt = UPDATE_RATE / 60
 
     for unit_number, state in pairs(storage.pid) do
         if not state.entity.valid or not state.output_entity.valid then
             storage.pid[unit_number] = nil
         else
-            process_pid(state, dt)
+            process_pid(state)
         end
     end
 end)
