@@ -16,6 +16,26 @@ local display_sprites = {
     west = gen_display(util.by_pixel(0, -10.5)),
 }
 
+local sprites = make_4way_animation_from_spritesheet({ 
+    layers ={
+        {
+            scale = 0.5,
+            filename = "__pid-combinator__/graphics/entity/combinator/pid-combinator.png",
+            width = 144,
+            height = 124,
+            shift = util.by_pixel(0.5, 7.5)
+        },
+        {
+            scale = 0.5,
+            filename = "__base__/graphics/entity/combinator/arithmetic-combinator-shadow.png",
+            width = 148,
+            height = 156,
+            shift = util.by_pixel(13.5, 24.5),
+            draw_as_shadow = true
+        }
+    }
+})
+
 local function copy_prototype(ptype, name, new_name)
     local copy = table.deepcopy(data.raw[ptype][name])
     copy.name = new_name
@@ -28,6 +48,7 @@ local function copy_prototype(ptype, name, new_name)
 end
 
 local combinator = copy_prototype("arithmetic-combinator", "arithmetic-combinator", "pid-combinator")
+combinator.sprites = sprites
 combinator.plus_symbol_sprites = display_sprites
 combinator.minus_symbol_sprites = display_sprites
 combinator.multiply_symbol_sprites = display_sprites

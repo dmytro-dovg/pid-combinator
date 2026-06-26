@@ -1,7 +1,7 @@
 local item = table.deepcopy(data.raw["item"]["arithmetic-combinator"])
 item.name        = "pid-combinator"
 item.place_result = "pid-combinator"
--- item.icon = "__pid-combinator__/graphics/icon.png"
+item.icon = "__pid-combinator__/graphics/icons/pid-combinator.png"
 item.order       = "c[combinators]-e[pid-combinator]"
 
 
