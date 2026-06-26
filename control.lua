@@ -68,9 +68,9 @@ local function on_built(event)
         integral = 0,
         prev_error = 0,
         -- Signals
-        pv_signal = {name="signal-P", type="virtual"},  -- process variable
-        sp_signal = {name="signal-S", type="virtual"},  -- setpoint
-        out_signal = {name="signal-O", type="virtual"},  -- output
+        pv_signal = { name = "signal-P", type = "virtual" },
+        sp_signal = { name = "signal-S", type = "virtual" },
+        out_signal = { name = "signal-O", type = "virtual" },
     }
 end
 
@@ -111,7 +111,6 @@ end
 for _, event in pairs(on_removed_events) do
     script.on_event(event, on_removed, {{filter="name", name="pid-combinator"}})
 end
-
 
 local UPDATE_RATE = 1
 
@@ -165,9 +164,3 @@ script.on_event(defines.events.on_tick, function(event)
         end
     end
 end)
-
--- TODO:
--- - Add overrides for Ks if signal is present
--- - Add GUI
--- - Separate pv sp signals
--- - Add sensible defaults
