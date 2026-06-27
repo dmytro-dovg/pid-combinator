@@ -1,3 +1,6 @@
+local pid_gui = require "gui.pid-combinator-gui"
+local List = require "utils.list"
+
 local function debugp(msg)
     localised_print("[PID CONTROLLER]: " .. msg)
 end
@@ -74,6 +77,9 @@ local function on_built(event)
         -- PID state
         integral = 0,
         prev_error = 0,
+        -- Graph
+        graph_time_scale = 1.0,
+        graph_data_points = List.new(),
     }
 end
 
@@ -91,6 +97,19 @@ local function on_removed(event)
     if storage.pid then
         storage.pid[entity.unit_number] = nil
     end
+end
+
+local function on_gui_open(event)
+    local entity = event.entity
+    if not entity or entity.name ~= "pid-combinator" then return end
+    debugp("Opening " .. entity.name)
+    local player = game.get_player(event.player_index)
+    local old_frame = player.gui.screen["pid-combinator-frame"]
+    if old_frame then
+        pid_gui.destroy(player)
+    end
+    player.opened = nil
+    pid_gui.build_frame(player, entity)
 end
 
 local on_built_events = {
@@ -115,15 +134,16 @@ for _, event in pairs(on_removed_events) do
     script.on_event(event, on_removed, {{filter="name", name="pid-combinator"}})
 end
 
-script.on_event(defines.events.on_gui_click, function(event)
-  if event.element.name == "close_button" then
+script.on_event(defines.events.on_gui_opened, on_gui_open)
+
+script.on_event(defines.events.on_player_removed, function(event)
     local player = game.get_player(event.player_index)
-    player.gui.center["my_frame"].destroy()
-    player.opened = nil
-  end
+    if not player then return end
+
+    pid_gui.cleanup(player)
 end)
 
-local function process_pid(state, dt)
+local function process_pid(state)
     local entity = state.entity
 
     local red_network = entity.get_circuit_network(connector_id.input["red"])
@@ -131,8 +151,8 @@ local function process_pid(state, dt)
 
     if not red_network and not green_network then return end
 
-    debugp("Red " .. serpent.dump(red_network))
-    debugp("Green " .. serpent.dump(green_network))
+    --debugp("Red " .. serpent.dump(red_network))
+    --debugp("Green " .. serpent.dump(green_network))
 
     local pv = 0
     local sp = 0
@@ -152,7 +172,7 @@ local function process_pid(state, dt)
     end
 
     local error = sp - pv
-    debugp("pv = " .. pv .. ", sp = " .. sp .. ", error = " .. error)
+    --debugp("pv = " .. pv .. ", sp = " .. sp .. ", error = " .. error)
 
     -- Clamp integral to prevent windup
     state.integral = math.max(-max_integral, math.min(max_integral, state.integral + error * state.dt))
@@ -162,7 +182,9 @@ local function process_pid(state, dt)
         + ki * state.integral
         + kd * derivative
 
+
     write_output(state.output_entity, math.floor(output))
+    return { output, pv, sp }
 end
 
 script.on_event(defines.events.on_tick, function(event)
@@ -172,7 +194,11 @@ script.on_event(defines.events.on_tick, function(event)
         if not state.entity.valid or not state.output_entity.valid then
             storage.pid[unit_number] = nil
         else
-            process_pid(state)
+            local value = process_pid(state)
+            if not value then return end
+            for _, player in pairs(game.players) do
+                pid_gui.plot(player, { tick = event.tick, value = value[2] }, state, event.tick)
+            end
         end
     end
 end)
