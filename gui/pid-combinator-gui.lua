@@ -128,7 +128,7 @@ function this.display(player, state)
     -- Close button
     titlebar.add {
         type = "sprite-button",
-        name = "close_button_" .. state.entity.unit_number,
+        name = "pid_combinator_close_button_" .. state.entity.unit_number,
         style = "frame_action_button",
         sprite = "utility/close",
         clicked_sprite = "utility/close_black",
@@ -195,7 +195,7 @@ function this.display(player, state)
 
     local slider = section_2.add {
         type = "slider",
-        name = "time_scale_slider_" .. state.entity.unit_number,
+        name = "pid_combinator_time_scale_slider_" .. state.entity.unit_number,
         minimum_value = 0.4,
         maximum_value = 5,
         value = 1,
@@ -263,17 +263,18 @@ function this.plot(player, state, tick)
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
-    if not string.find(event.element.name, "^time_scale_slider") then return end
-    debugp("Slider " .. event.element.slider_value)
-    local unit_number = tonumber(string.sub(event.element.name, 19))
-    local gui_state = storage.pid_guis[event.player_index][unit_number]
+    local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
+    if not matched_unit then return end
+    local per_player = storage.pid_guis and storage.pid_guis[event.player_index]
+    local gui_state = per_player and per_player[matched_unit]
+    if not gui_state then return end
     gui_state.graph.time_scale = event.element.slider_value
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
-    if not string.find(event.element.name, "^close_button") then return end
-    local unit_number = tonumber(string.sub(event.element.name, 14))
-    this.destroy(event.player_index, unit_number)
+    local matched_unit = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))
+    if not matched_unit then return end
+    this.destroy(event.player_index, matched_unit)
 end)
 
 return this
