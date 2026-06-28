@@ -1,6 +1,4 @@
-local List = require "utils.list"
-
-local this = {}
+local List = require "utils.list"local this = {}
 local function debugp(msg)
     localised_print("[PID CONTROLLER GUI]: " .. msg)
 end
@@ -99,12 +97,84 @@ local function create_graph(gui_state, parent, initial_zoom)
     return graph_camera
 end
 
+local function plot(player, gui_state, data, tick)
+    if not gui_state then return end
+    local surface = gui_state.graph.surface
+    if not surface then return end
+
+    local tiles_per_second = gui_state.graph.time_scale
+    local ticks_per_second = 60
+    local scale = 50
+    local tick_grid_offset = (tick % ticks_per_second) / ticks_per_second
+    -- With every added GUI reduce sample rate to protect game UPS
+    local ttl = this.gui_count()
+    for i=0, math.floor(size_tiles.width / tiles_per_second) do
+        rendering.draw_line{
+            surface = surface,
+            from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y}, to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y},
+            color = {r=0.1, g=0.1, b=0.1, a=1},
+            width = 1,
+            players = { player },
+            time_to_live = ttl,
+        }
+    end
+
+    for i=0, math.floor(size_tiles.height) do
+        rendering.draw_line{
+            surface = surface,
+            from = { 0, -offset.y + i}, to = { 2 * offset.x, -offset.y + i},
+            color = {r=0.1, g=0.1, b=0.1, a=1},
+            width = 1,
+            players = { player },
+            time_to_live = ttl,
+        }
+    end
+
+    for i=data.first + 1, data.last do
+        local p1 = data[i - 1]
+        local p2 = data[i]
+        local from = { 2*offset.x - (tick - p1.tick) / ticks_per_second * tiles_per_second, -p1.value / scale}
+        local to = { 2*offset.x - (tick - p2.tick) / ticks_per_second * tiles_per_second, -p2.value / scale}
+
+        rendering.draw_line {
+            surface = surface,
+            from = from, to = to,
+            color = {r=0, g=1, b=0, a=1},
+            width = 1,
+            players = { player },
+            time_to_live = ttl,
+        }
+    end
+end
+
+function this.on_tick(unit_number, data, tick, value)
+    if not data or not value then return end
+    List.pushright(data, { tick = tick, value = value.pv })
+
+    if List.length(data) > 1 then
+        -- Trim older data points
+        while List.length(data) > 0 and (tick - data[data.first].tick) / 60 > 25 do
+            List.popleft(data)
+        end
+        -- With every added GUI reduce sample rate to protect game UPS
+        local n = this.gui_count()
+        if value and n > 0 and tick % n == 0 then
+            for player_index, per_player in pairs(storage.pid_guis) do
+                local gui_state = per_player[unit_number]
+                if gui_state then
+                    plot(player_index, gui_state, data, tick)
+                end
+            end
+        end
+    end
+end
+
 function this.display(player, state)
     storage.pid_guis = storage.pid_guis or {}
     storage.pid_guis[player.index] = storage.pid_guis[player.index] or {}
     local entry = storage.pid_guis[player.index][state.entity.unit_number]
     if not entry then
-        entry = { graph = { time_scale = 1.0, data = List.new() }, controls = {} }
+        entry = { graph = { time_scale = 1.0 }, controls = {} }
         storage.pid_guis[player.index][state.entity.unit_number] = entry
         storage.pid_guis_count = (storage.pid_guis_count or 0) + 1
     end
@@ -217,56 +287,6 @@ function this.display(player, state)
     }
 
     gui_state.controls.time_scale_slider = slider
-end
-
-function this.plot(player, gui_state, data, tick)
-    if not gui_state then return end
-    local surface = gui_state.graph.surface
-    if not surface then return end
-
-    local tiles_per_second = gui_state.graph.time_scale
-    local ticks_per_second = 60
-    local scale = 50
-    local tick_grid_offset = (tick % ticks_per_second) / ticks_per_second
-    -- With every added GUI reduce sample rate to protect game UPS
-    local ttl = this.gui_count()
-    for i=0, math.floor(size_tiles.width / tiles_per_second) do
-        rendering.draw_line{
-            surface = surface,
-            from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y}, to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y},
-            color = {r=0.1, g=0.1, b=0.1, a=1},
-            width = 1,
-            players = { player },
-            time_to_live = ttl,
-        }
-    end
-
-    for i=0, math.floor(size_tiles.height) do
-        rendering.draw_line{
-            surface = surface,
-            from = { 0, -offset.y + i}, to = { 2 * offset.x, -offset.y + i},
-            color = {r=0.1, g=0.1, b=0.1, a=1},
-            width = 1,
-            players = { player },
-            time_to_live = ttl,
-        }
-    end
-
-    for i=data.first + 1, data.last do
-        local p1 = data[i - 1]
-        local p2 = data[i]
-        local from = { 2*offset.x - (tick - p1.tick) / ticks_per_second * tiles_per_second, -p1.value / scale}
-        local to = { 2*offset.x - (tick - p2.tick) / ticks_per_second * tiles_per_second, -p2.value / scale}
-
-        rendering.draw_line {
-            surface = surface,
-            from = from, to = to,
-            color = {r=0, g=1, b=0, a=1},
-            width = 1,
-            players = { player },
-            time_to_live = ttl,
-        }
-    end
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)

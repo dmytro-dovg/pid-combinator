@@ -201,25 +201,7 @@ local function process_pid(state, tick)
 end
 
 local function update_guis(unit_number, data, tick, value)
-    if not data or not value then return end
-    List.pushright(data, { tick = tick, value = value.pv })
 
-    if List.length(data) > 1 then
-        -- Trim older data points
-        while List.length(data) > 0 and (tick - data[data.first].tick) / 60 > 25 do
-            List.popleft(data)
-        end
-        -- With every added GUI reduce sample rate to protect game UPS
-        local n = pid_gui.gui_count()
-        if value and n > 0 and tick % n == 0 then
-            for player_index, per_player in pairs(storage.pid_guis) do
-                local gui_state = per_player[unit_number]
-                if gui_state then
-                    pid_gui.plot(player_index, gui_state, data, tick)
-                end
-            end
-        end
-    end
 end
 
 script.on_event(defines.events.on_tick, function(event)
@@ -229,7 +211,7 @@ script.on_event(defines.events.on_tick, function(event)
             storage.pid[unit_number] = nil
         else
             local value = process_pid(state, event.tick)
-            update_guis(unit_number, state.graph_data, event.tick, value)
+            pid_gui.on_tick(unit_number, state.graph_data, event.tick, value)
         end
     end
 end)
