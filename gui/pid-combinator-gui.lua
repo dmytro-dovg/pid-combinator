@@ -1,4 +1,6 @@
 local List = require "utils.list"
+local SignalPicker = require "gui.signal-picker"
+local ValueSlider = require "gui.value-slider"
 local this = {}
 local function debugp(msg)
     localised_print("[PID CONTROLLER GUI]: " .. msg)
@@ -230,7 +232,6 @@ function this.display(player, state)
         style = "inside_shallow_frame",
         direction = "vertical",
     }
-    contents.style.height = 300
 
     local header = contents.add {
         type = "frame",
@@ -240,7 +241,6 @@ function this.display(player, state)
     header.style.horizontally_stretchable = true
     header.style.bottom_margin = 24
 
-
     local section_1 = contents.add {
         type = "flow",
         direction = "horizontal",
@@ -248,6 +248,8 @@ function this.display(player, state)
     }
     section_1.style.horizontal_spacing = 8
     section_1.style.padding = 8
+    section_1.style.top_padding = 0
+    section_1.style.bottom_padding = 0
 
     local graph_frame = section_1.add {
         type = "frame",
@@ -283,17 +285,136 @@ function this.display(player, state)
         name = "section_2",
     }
 
-    local slider = section_2.add {
-        type = "slider",
-        name = "pid_combinator_time_scale_slider_" .. unit_number,
-        minimum_value = 0.4,
-        maximum_value = 5,
-        value = 1,
-        value_step = 0.1,
-        discrete_values = true,
+    local tabbed_pane = section_2.add {
+        type = "tabbed-pane",
+        name = "tabbed_pane",
+    }
+    tabbed_pane.style.horizontally_stretchable = true
+
+    local tab_variables = tabbed_pane.add {
+        type = "tab",
+        caption = "Variables",
     }
 
-    gui_state.controls.time_scale_slider = slider
+
+    local tab_tuning = tabbed_pane.add {
+        type = "tab",
+        caption = "Tuning",
+    }
+
+    local tab_variables_content = tabbed_pane.add {
+        type = "flow",
+        direction = "horizontal",
+        name = "tab_variables_content",
+    }
+    tab_variables_content.style.padding = 8
+    tab_variables_content.style.top_padding = 0
+
+    local tab_tuning_content = tabbed_pane.add {
+        type = "flow",
+        direction = "vertical",
+        name = "tab_tuning_content",
+    }
+    tab_tuning_content.style.padding = 8
+    tab_tuning_content.style.top_padding = 0
+
+    tabbed_pane.add_tab(tab_variables, tab_variables_content)
+    tabbed_pane.add_tab(tab_tuning, tab_tuning_content)
+
+    local tab_variables_content_left = tab_variables_content.add {
+        type = "flow",
+        direction = "horizontal",
+        name = "tab_variables_content_left",
+    }
+    tab_variables_content_left.style.horizontally_stretchable = true
+
+    tab_variables_content_left.style.horizontal_spacing = 12
+
+    -- local tab_variables_content_right = tab_variables_content.add {
+    --     type = "flow",
+    --     direction = "vertical",
+    --     name = "tab_variables_content_right",
+    -- }
+    -- tab_variables_content_right.style.horizontally_stretchable = true
+
+
+    SignalPicker.new(tab_variables_content_left, "Setpoint", {
+        r_checkbox_name = "sp_r_checkbox",
+        g_checkbox_name = "sp_g_checkbox",
+        choose_elem_button_name = "sp_choose_elem_button",
+        signal = { name = "signal-S", type = "virtual" },
+    })
+
+
+    SignalPicker.new(tab_variables_content_left, "Process Variable", {
+        r_checkbox_name = "pv_r_checkbox",
+        g_checkbox_name = "pv_g_checkbox",
+        choose_elem_button_name = "pv_choose_elem_button",
+        signal = { name = "signal-V", type = "virtual" },
+    })
+
+    local tab_variables_content_filler = tab_variables_content_left.add {
+        type = "empty-widget",
+        ignored_by_interaction = true,
+    }
+    tab_variables_content_filler.style.horizontally_stretchable = true
+
+    SignalPicker.new(tab_variables_content_left, "Output", {
+        r_checkbox_name = "output_r_checkbox",
+        g_checkbox_name = "output_g_checkbox",
+        choose_elem_button_name = "output_choose_elem_button",
+        signal = { name = "signal-check", type = "virtual" },
+    })
+
+    -- local slider = tab_variables_content_left.add {
+    --     type = "slider",
+    --     name = "pid_combinator_time_scale_slider_" .. unit_number,
+    --     minimum_value = 0.4,
+    --     maximum_value = 5,
+    --     value = 1,
+    --     value_step = 0.1,
+    --     discrete_values = false,
+    -- }
+
+    -- gui_state.controls.time_scale_slider = slider
+
+
+    local tab_tuning_content_left = tab_tuning_content.add {
+        type = "flow",
+        direction = "vertical",
+        name = "tab_tuning_content_left",
+    }
+    tab_tuning_content_left.style.horizontally_stretchable = true
+
+    ValueSlider.new(tab_tuning_content_left, "Kp", {
+        slider = {
+            name = "pid_combinator_kp",
+            minimum_value = 0.0,
+            maximum_value = 5,
+            value = 1.2,
+            value_step = 0.1,
+        }
+    })
+
+    ValueSlider.new(tab_tuning_content_left, "Ki", {
+        slider = {
+            name = "pid_combinator_ki",
+            minimum_value = 0.0,
+            maximum_value = 5,
+            value = 0.6,
+            value_step = 0.1,
+        }
+    })
+
+    ValueSlider.new(tab_tuning_content_left, "Kd", {
+        slider = {
+            name = "pid_combinator_kd",
+            minimum_value = 0.0,
+            maximum_value = 5,
+            value = 0.2,
+            value_step = 0.1,
+        }
+    })
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
