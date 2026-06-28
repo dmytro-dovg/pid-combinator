@@ -206,13 +206,9 @@ function this.display(player, state)
     gui_state.controls.time_scale_slider = slider
 end
 
-function this.plot(player, state, tick)
-    if not storage.pid_guis or not storage.pid_guis[player.index] or not storage.pid_guis[player.index][state.entity.unit_number] then
-        return
-    end
-    local gui_state = storage.pid_guis[player.index][state.entity.unit_number]
+function this.plot(player, gui_state, state, tick)
+    if not gui_state then return end
     local surface = gui_state.graph.surface
-    debugp("Plotting for " .. state.entity.unit_number)
     if not surface then return end
 
     local tiles_per_second = gui_state.graph.time_scale

@@ -212,8 +212,11 @@ script.on_event(defines.events.on_tick, function(event)
                     while List.length(data) > 0 and (event.tick - data[data.first].tick) / 60 > 25 do
                         List.popleft(data)
                     end
-                    for _, player in pairs(game.players) do
-                        pid_gui.plot(player, state, event.tick)
+                    for player_index, per_player in pairs(storage.pid_guis) do
+                        local gui_state = per_player[unit_number]
+                        if gui_state then
+                            pid_gui.plot(player_index, gui_state, state, event.tick)
+                        end
                     end
                 end
             end
