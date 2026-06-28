@@ -200,10 +200,6 @@ local function process_pid(state, tick)
     return { output = output, pv = pv, sp = sp }
 end
 
-local function update_guis(unit_number, data, tick, value)
-
-end
-
 script.on_event(defines.events.on_tick, function(event)
     if not storage.pid then return end
     for unit_number, state in pairs(storage.pid) do

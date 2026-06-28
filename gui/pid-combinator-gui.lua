@@ -1,4 +1,5 @@
-local List = require "utils.list"local this = {}
+local List = require "utils.list"
+local this = {}
 local function debugp(msg)
     localised_print("[PID CONTROLLER GUI]: " .. msg)
 end
@@ -158,7 +159,7 @@ function this.on_tick(unit_number, data, tick, value)
         end
         -- With every added GUI reduce sample rate to protect game UPS
         local n = this.gui_count()
-        if value and n > 0 and tick % n == 0 then
+        if n > 0 and tick % n == 0 then
             for player_index, per_player in pairs(storage.pid_guis) do
                 local gui_state = per_player[unit_number]
                 if gui_state then
