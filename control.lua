@@ -86,11 +86,14 @@ local function on_removed(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
 
-    if storage.pid_guis then
-        for player_index, per_player in pairs(storage.pid_guis) do
-            if per_player[entity.unit_number] then
-                pid_gui.destroy(player_index, entity.unit_number)
-            end
+    local viewers = storage.pid_guis and storage.pid_guis[entity.unit_number]
+    if viewers then
+        local player_indices = {}
+        for player_index, _ in pairs(viewers) do
+            player_indices[#player_indices + 1] = player_index
+        end
+        for _, player_index in ipairs(player_indices) do
+            pid_gui.destroy(player_index, entity.unit_number)
         end
     end
 

@@ -20,18 +20,17 @@ local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts
 local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
 local function gui_state(player_index, unit_number)
-    if not storage.pid_guis or not storage.pid_guis[player_index] or not storage.pid_guis[player_index][unit_number] then
-        return
-    end
-    return storage.pid_guis[player_index][unit_number]
+    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
+    return viewers and viewers[player_index]
 end
 
 function this.cleanup(player)
-    if not storage.pid_guis or not storage.pid_guis[player.index] then return end
+    if not storage.pid_guis then return end
     local unit_numbers = {}
-    for unit_number, _ in pairs(storage.pid_guis[player.index]) do unit_numbers[#unit_numbers + 1] = unit_number end
+    for unit_number, viewers in pairs(storage.pid_guis) do
+        if viewers[player.index] then unit_numbers[#unit_numbers + 1] = unit_number end
+    end
     for _, unit_number in ipairs(unit_numbers) do this.destroy(player.index, unit_number) end
-    storage.pid_guis[player.index] = nil
 end
 
 function this.destroy(player_index, unit_number)
@@ -43,10 +42,15 @@ function this.destroy(player_index, unit_number)
     if gui_state.graph.surface.valid then
         game.delete_surface(gui_state.graph.surface)
     end
-    storage.pid_guis[player_index][unit_number] = nil
-    storage.pid_guis_count = storage.pid_guis_count -1
-    if next(storage.pid_guis[player_index]) == nil then
-        storage.pid_guis[player_index] = nil
+    local viewers = storage.pid_guis[unit_number]
+    viewers[player_index] = nil
+    storage.pid_guis_count = storage.pid_guis_count - 1
+    if next(viewers) == nil then
+        storage.pid_guis[unit_number] = nil
+        -- Remove data when nobody's watching
+        if storage.pid and storage.pid[unit_number] then
+            storage.pid[unit_number].graph_data = List.new()
+        end
     end
 end
 
@@ -150,6 +154,10 @@ end
 
 function this.on_tick(unit_number, data, tick, value)
     if not data or not value then return end
+
+    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
+    if not viewers then return end
+
     List.pushright(data, { tick = tick, value = value.pv })
 
     if List.length(data) > 1 then
@@ -160,29 +168,27 @@ function this.on_tick(unit_number, data, tick, value)
         -- With every added GUI reduce sample rate to protect game UPS
         local n = this.gui_count()
         if n > 0 and tick % n == 0 then
-            for player_index, per_player in pairs(storage.pid_guis) do
-                local gui_state = per_player[unit_number]
-                if gui_state then
-                    plot(player_index, gui_state, data, tick)
-                end
+            for player_index, gui_state in pairs(viewers) do
+                plot(player_index, gui_state, data, tick)
             end
         end
     end
 end
 
 function this.display(player, state)
+    local unit_number = state.entity.unit_number
     storage.pid_guis = storage.pid_guis or {}
-    storage.pid_guis[player.index] = storage.pid_guis[player.index] or {}
-    local entry = storage.pid_guis[player.index][state.entity.unit_number]
+    storage.pid_guis[unit_number] = storage.pid_guis[unit_number] or {}
+    local entry = storage.pid_guis[unit_number][player.index]
     if not entry then
         entry = { graph = { time_scale = 1.0 }, controls = {} }
-        storage.pid_guis[player.index][state.entity.unit_number] = entry
+        storage.pid_guis[unit_number][player.index] = entry
         storage.pid_guis_count = (storage.pid_guis_count or 0) + 1
     end
-    local gui_state = storage.pid_guis[player.index][state.entity.unit_number]
+    local gui_state = entry
     local frame = player.gui.screen.add {
         type = "frame",
-        name = "pid_combinator_frame_" .. player.index .. "_" .. state.entity.unit_number,
+        name = "pid_combinator_frame_" .. player.index .. "_" .. unit_number,
         direction = "vertical",
     }
     gui_state.frame = frame
@@ -212,7 +218,7 @@ function this.display(player, state)
     -- Close button
     titlebar.add {
         type = "sprite-button",
-        name = "pid_combinator_close_button_" .. state.entity.unit_number,
+        name = "pid_combinator_close_button_" .. unit_number,
         style = "frame_action_button",
         sprite = "utility/close",
         clicked_sprite = "utility/close_black",
@@ -279,7 +285,7 @@ function this.display(player, state)
 
     local slider = section_2.add {
         type = "slider",
-        name = "pid_combinator_time_scale_slider_" .. state.entity.unit_number,
+        name = "pid_combinator_time_scale_slider_" .. unit_number,
         minimum_value = 0.4,
         maximum_value = 5,
         value = 1,
@@ -293,8 +299,8 @@ end
 script.on_event(defines.events.on_gui_value_changed, function(event)
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
     if not matched_unit then return end
-    local per_player = storage.pid_guis and storage.pid_guis[event.player_index]
-    local gui_state = per_player and per_player[matched_unit]
+    local viewers = storage.pid_guis and storage.pid_guis[matched_unit]
+    local gui_state = viewers and viewers[event.player_index]
     if not gui_state then return end
     gui_state.graph.time_scale = event.element.slider_value
 end)
@@ -309,13 +315,12 @@ end)
 script.on_event(defines.events.on_player_display_scale_changed, function (event)
     local player = game.get_player(event.player_index)
     if not player then return end
+    if not storage.pid_guis then return end
 
-    local gui_states = storage.pid_guis and storage.pid_guis[player.index]
-    if not gui_states then return end
-
-    for _, gui_state in pairs(gui_states) do
-        debugp("Setting zoom " .. player.display_scale)
-        if gui_state.controls.graph.valid then
+    for _, viewers in pairs(storage.pid_guis) do
+        local gui_state = viewers[player.index]
+        if gui_state and gui_state.controls.graph.valid then
+            debugp("Setting zoom " .. player.display_scale)
             gui_state.controls.graph.zoom = player.display_scale
         end
     end
