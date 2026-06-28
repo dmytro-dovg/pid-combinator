@@ -201,7 +201,7 @@ local function process_pid(state, tick)
 end
 
 local function update_guis(unit_number, data, tick, value)
-    if not data and not value then return end
+    if not data or not value then return end
     List.pushright(data, { tick = tick, value = value.pv })
 
     if List.length(data) > 1 then
