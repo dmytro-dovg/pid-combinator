@@ -1,5 +1,4 @@
 local pid_gui = require "gui.pid-combinator-gui"
-local List = require "utils.list"
 
 local function debugp(msg)
     localised_print("[PID CONTROLLER]: " .. msg)
@@ -67,7 +66,6 @@ local function on_built(event)
         output_entity = output_entity,
         -- PID settings
         kp = 1.0, ki = 0.0, kd = 0.0,
-        dt = 0.016667, -- 60 UPS
         max_integral = 200, -- anti-windup
         signals = {
             pv = { name = "signal-V", type = "virtual" },
@@ -77,8 +75,7 @@ local function on_built(event)
         -- PID state
         integral = 0,
         prev_error = 0,
-        -- Graph
-        graph_data_points = List.new(),
+        prev_tick = nil,
     }
 end
 
@@ -150,7 +147,7 @@ script.on_event(defines.events.on_player_removed, function(event)
     pid_gui.cleanup(player)
 end)
 
-local function process_pid(state)
+local function process_pid(state, tick)
     local entity = state.entity
 
     local red_network = entity.get_circuit_network(connector_id.input["red"])
@@ -179,11 +176,16 @@ local function process_pid(state)
     end
 
     local err = sp - pv
-    --debugp("pv = " .. pv .. ", sp = " .. sp .. ", error = " .. error)
+
+    local prev_tick = state.prev_tick or (tick - 1)
+    local dt = (tick - prev_tick) / 60
+    -- Clamp dt to limit huge integral tick
+    if dt > 1 then dt = 1 end
+    state.prev_tick = tick
 
     -- Clamp integral to prevent windup
-    state.integral = math.max(-max_integral, math.min(max_integral, state.integral + err * state.dt))
-    local derivative = (err - state.prev_error) / state.dt
+    state.integral = math.max(-max_integral, math.min(max_integral, state.integral + err * dt))
+    local derivative = (err - state.prev_error) / dt
     state.prev_error = err
     local output = kp * err
         + ki * state.integral
@@ -191,7 +193,7 @@ local function process_pid(state)
 
 
     write_output(state.output_entity, math.floor(output))
-    return { output, pv, sp }
+    return { output = output, pv = pv, sp = sp }
 end
 
 script.on_event(defines.events.on_tick, function(event)
@@ -200,23 +202,14 @@ script.on_event(defines.events.on_tick, function(event)
         if not state.entity.valid or not state.output_entity.valid then
             storage.pid[unit_number] = nil
         else
-            local value = process_pid(state)
-            local data = state.graph_data_points
+            local value = process_pid(state, event.tick)
             -- With every added GUI reduce sample rate to protect game UPS
             local n = pid_gui.gui_count()
             if value and n > 0 and event.tick % n == 0 then
-                local point = { tick = event.tick, value = value[2] }
-                List.pushright(data, point)
-                if List.length(data) >= 2 then
-                    -- Trim older data points
-                    while List.length(data) > 0 and (event.tick - data[data.first].tick) / 60 > 25 do
-                        List.popleft(data)
-                    end
-                    for player_index, per_player in pairs(storage.pid_guis) do
-                        local gui_state = per_player[unit_number]
-                        if gui_state then
-                            pid_gui.plot(player_index, gui_state, state, event.tick)
-                        end
+                for player_index, per_player in pairs(storage.pid_guis) do
+                    local gui_state = per_player[unit_number]
+                    if gui_state then
+                        pid_gui.plot(player_index, gui_state, value.pv, event.tick)
                     end
                 end
             end

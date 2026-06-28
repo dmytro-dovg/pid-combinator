@@ -1,3 +1,5 @@
+local List = require "utils.list"
+
 local this = {}
 local function debugp(msg)
     localised_print("[PID CONTROLLER GUI]: " .. msg)
@@ -47,6 +49,10 @@ function this.destroy(player_index, unit_number)
     if next(storage.pid_guis[player_index]) == nil then
         storage.pid_guis[player_index] = nil
     end
+    local state = storage.pid and storage.pid[unit_number]
+    if state then
+        state.graph_data_points = List.new()
+    end
 end
 
 function this.gui_count()
@@ -83,13 +89,13 @@ local function create_surface()
     return surface
 end
 
-local function create_graph(gui_state, parent)
+local function create_graph(gui_state, parent, initial_zoom)
     local graph_camera = parent.add{
         type = "camera",
         name = "graph_camera",
         position = { offset.x, 0 },
         surface_index = gui_state.graph.surface.index,
-        zoom = 1.0
+        zoom = initial_zoom
     }
 
     graph_camera.style.width = consts.viewport.width
@@ -102,7 +108,7 @@ function this.display(player, state)
     storage.pid_guis[player.index] = storage.pid_guis[player.index] or {}
     local entry = storage.pid_guis[player.index][state.entity.unit_number]
     if not entry then
-        entry = { graph = { time_scale = 1.0 }, controls = {} }
+        entry = { graph = { time_scale = 1.0, data = List.new() }, controls = {} }
         storage.pid_guis[player.index][state.entity.unit_number] = entry
         storage.pid_guis_count = (storage.pid_guis_count or 0) + 1
     end
@@ -180,7 +186,7 @@ function this.display(player, state)
     graph_frame.style.height = consts.viewport.height
 
     gui_state.graph.surface = gui_state.graph.surface or create_surface()
-    local graph = create_graph(gui_state, graph_frame)
+    gui_state.controls.graph = create_graph(gui_state, graph_frame, player.display_scale)
 
     local preview_frame = section_1.add {
         type = "frame",
@@ -217,7 +223,7 @@ function this.display(player, state)
     gui_state.controls.time_scale_slider = slider
 end
 
-function this.plot(player, gui_state, state, tick)
+function this.plot(player, gui_state, value, tick)
     if not gui_state then return end
     local surface = gui_state.graph.surface
     if not surface then return end
@@ -250,7 +256,16 @@ function this.plot(player, gui_state, state, tick)
         }
     end
 
-    local data = state.graph_data_points
+    local data = gui_state.graph.data
+
+    List.pushright(data, { tick = tick, value = value })
+
+    if List.length(data) < 2 then return end
+
+    -- Trim older data points
+    while List.length(data) > 0 and (tick - data[data.first].tick) / 60 > 25 do
+        List.popleft(data)
+    end
 
     for i=data.first + 1,data.last do
         local p1 = data[i - 1]
@@ -282,6 +297,18 @@ script.on_event(defines.events.on_gui_click, function(event)
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))
     if not matched_unit then return end
     this.destroy(event.player_index, matched_unit)
+end)
+
+
+script.on_event(defines.events.on_player_display_scale_changed, function (event)
+    local player = game.get_player(event.player_index)
+    if not player then return end
+    debugp("Player scale " .. player.display_scale)
+
+    for _, gui_state in pairs((storage.pid_guis and storage.pid_guis[player.index]) or {}) do
+        debugp("Setting zoom " .. player.display_scale)
+        gui_state.controls.graph.zoom = player.display_scale
+    end
 end)
 
 return this
