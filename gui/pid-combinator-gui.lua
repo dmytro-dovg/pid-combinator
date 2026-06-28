@@ -18,6 +18,12 @@ local consts = {
 local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts.viewport.height / consts.tile_size) / 2 }
 local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
+local function gui_state(player_index, unit_number)
+    if not storage.pid_guis or not storage.pid_guis[player_index] or not storage.pid_guis[player_index][unit_number] then
+        return
+    end
+    return storage.pid_guis[player_index][unit_number]
+end
 
 function this.cleanup(player)
     if not storage.pid_guis or not storage.pid_guis[player.index] then return end
@@ -28,12 +34,14 @@ function this.cleanup(player)
 end
 
 function this.destroy(player_index, unit_number)
-    if not storage.pid_guis or not storage.pid_guis[player_index] or not storage.pid_guis[player_index][unit_number] then
-        return
+    local gui_state = gui_state(player_index, unit_number)
+    if not gui_state then return end
+    if gui_state.frame.valid then
+        gui_state.frame.destroy()
     end
-    local gui_state = storage.pid_guis[player_index][unit_number]
-    gui_state.frame.destroy()
-    game.delete_surface(gui_state.graph.surface)
+    if gui_state.graph.surface.valid then
+        game.delete_surface(gui_state.graph.surface)
+    end
     storage.pid_guis[player_index][unit_number] = nil
     storage.pid_guis_count = storage.pid_guis_count -1
 end
