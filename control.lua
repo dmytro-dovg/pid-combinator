@@ -57,7 +57,7 @@ end
 local function on_built(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
-
+    if storage.pid and storage.pid[entity.unit_number] then return end
     local output_entity = create_output_for(entity)
     debugp("Created main " .. serpent.dump(entity))
     debugp("Created hidden " .. serpent.dump(output_entity))
@@ -78,7 +78,6 @@ local function on_built(event)
         integral = 0,
         prev_error = 0,
         -- Graph
-        graph_time_scale = 1.0,
         graph_data_points = List.new(),
     }
 end
@@ -87,6 +86,14 @@ local function on_removed(event)
     debugp("Event: " .. event.name)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
+
+    if storage.pid_guis then
+        for player_index, per_player in pairs(storage.pid_guis) do
+            if per_player[entity.unit_number] then
+                pid_gui.destroy(player_index, entity.unit_number)
+            end
+        end
+    end
 
     local state = storage.pid and storage.pid[entity.unit_number]
     if state and state.output_entity and state.output_entity.valid then
@@ -97,19 +104,19 @@ local function on_removed(event)
     if storage.pid then
         storage.pid[entity.unit_number] = nil
     end
+
 end
 
 local function on_gui_open(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
+    local state = storage.pid[entity.unit_number]
+    if not state then return end
     debugp("Opening " .. entity.name)
     local player = game.get_player(event.player_index)
-    local old_frame = player.gui.screen["pid-combinator-frame"]
-    if old_frame then
-        pid_gui.destroy(player)
-    end
+    pid_gui.destroy(event.player_index, entity.unit_number)
     player.opened = nil
-    pid_gui.build_frame(player, entity)
+    pid_gui.display(player, state)
 end
 
 local on_built_events = {
@@ -171,14 +178,14 @@ local function process_pid(state)
         sp = sp + (green_network.get_signal(state.signals.sp) or 0)
     end
 
-    local error = sp - pv
+    local err = sp - pv
     --debugp("pv = " .. pv .. ", sp = " .. sp .. ", error = " .. error)
 
     -- Clamp integral to prevent windup
-    state.integral = math.max(-max_integral, math.min(max_integral, state.integral + error * state.dt))
-    local derivative = (error - state.prev_error) / state.dt
-    state.prev_error = error
-    local output = kp * error
+    state.integral = math.max(-max_integral, math.min(max_integral, state.integral + err * state.dt))
+    local derivative = (err - state.prev_error) / state.dt
+    state.prev_error = err
+    local output = kp * err
         + ki * state.integral
         + kd * derivative
 
@@ -189,15 +196,26 @@ end
 
 script.on_event(defines.events.on_tick, function(event)
     if not storage.pid then return end
-
     for unit_number, state in pairs(storage.pid) do
         if not state.entity.valid or not state.output_entity.valid then
             storage.pid[unit_number] = nil
         else
             local value = process_pid(state)
-            if not value then return end
-            for _, player in pairs(game.players) do
-                pid_gui.plot(player, { tick = event.tick, value = value[2] }, state, event.tick)
+            local data = state.graph_data_points
+            -- With every added GUI reduce sample rate to protect game UPS
+            local n = pid_gui.gui_count()
+            if value and n > 0 and event.tick % n == 0 then
+                local point = { tick = event.tick, value = value[2] }
+                List.pushright(data, point)
+                if List.length(data) >= 2 then
+                    -- Trim data points older than 1 minute
+                    while List.length(data) > 0 and (event.tick - data[data.first].tick) / 60 > 25 do
+                        List.popleft(data)
+                    end
+                    for _, player in pairs(game.players) do
+                        pid_gui.plot(player, state, event.tick)
+                    end
+                end
             end
         end
     end
