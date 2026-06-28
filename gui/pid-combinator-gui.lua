@@ -303,11 +303,15 @@ end)
 script.on_event(defines.events.on_player_display_scale_changed, function (event)
     local player = game.get_player(event.player_index)
     if not player then return end
-    debugp("Player scale " .. player.display_scale)
 
-    for _, gui_state in pairs((storage.pid_guis and storage.pid_guis[player.index]) or {}) do
+    local gui_states = storage.pid_guis and storage.pid_guis[player.index]
+    if not gui_states then return end
+
+    for _, gui_state in pairs(gui_states) do
         debugp("Setting zoom " .. player.display_scale)
-        gui_state.controls.graph.zoom = player.display_scale
+        if gui_state.controls.graph.valid then
+            gui_state.controls.graph.zoom = player.display_scale
+        end
     end
 end)
 
