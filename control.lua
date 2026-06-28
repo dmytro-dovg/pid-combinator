@@ -181,6 +181,8 @@ local function process_pid(state, tick)
     local dt = (tick - prev_tick) / 60
     -- Clamp dt to limit huge integral tick
     if dt > 1 then dt = 1 end
+    -- Safeguard agains abnormal ticks
+    if dt <= 0 then state.prev_tick = tick; return end
     state.prev_tick = tick
 
     -- Clamp integral to prevent windup
