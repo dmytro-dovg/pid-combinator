@@ -101,7 +101,7 @@ end
 local function plot(player, gui_state, data, tick)
     if not gui_state then return end
     local surface = gui_state.graph.surface
-    if not surface then return end
+    if not surface or not surface.valid then return end
 
     local tiles_per_second = gui_state.graph.time_scale
     local ticks_per_second = 60
