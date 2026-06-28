@@ -34,7 +34,7 @@ function List.popright(list)
 end
 
 function List.length(list)
-    return list.last - list.first
+    return list.last - list.first + 1
 end
 
 return List
