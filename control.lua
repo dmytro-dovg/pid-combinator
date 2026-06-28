@@ -1,4 +1,5 @@
 local pid_gui = require "gui.pid-combinator-gui"
+local List = require "utils.list"
 
 local function debugp(msg)
     localised_print("[PID CONTROLLER]: " .. msg)
@@ -76,6 +77,7 @@ local function on_built(event)
         integral = 0,
         prev_error = 0,
         prev_tick = nil,
+        graph_data = List.new(),
     }
 end
 
@@ -198,6 +200,28 @@ local function process_pid(state, tick)
     return { output = output, pv = pv, sp = sp }
 end
 
+local function update_guis(unit_number, data, tick, value)
+    if not data and not value then return end
+    List.pushright(data, { tick = tick, value = value.pv })
+
+    if List.length(data) > 1 then
+        -- Trim older data points
+        while List.length(data) > 0 and (tick - data[data.first].tick) / 60 > 25 do
+            List.popleft(data)
+        end
+        -- With every added GUI reduce sample rate to protect game UPS
+        local n = pid_gui.gui_count()
+        if value and n > 0 and tick % n == 0 then
+            for player_index, per_player in pairs(storage.pid_guis) do
+                local gui_state = per_player[unit_number]
+                if gui_state then
+                    pid_gui.plot(player_index, gui_state, data, tick)
+                end
+            end
+        end
+    end
+end
+
 script.on_event(defines.events.on_tick, function(event)
     if not storage.pid then return end
     for unit_number, state in pairs(storage.pid) do
@@ -205,16 +229,7 @@ script.on_event(defines.events.on_tick, function(event)
             storage.pid[unit_number] = nil
         else
             local value = process_pid(state, event.tick)
-            -- With every added GUI reduce sample rate to protect game UPS
-            local n = pid_gui.gui_count()
-            if value and n > 0 and event.tick % n == 0 then
-                for player_index, per_player in pairs(storage.pid_guis) do
-                    local gui_state = per_player[unit_number]
-                    if gui_state then
-                        pid_gui.plot(player_index, gui_state, value.pv, event.tick)
-                    end
-                end
-            end
+            update_guis(unit_number, state.graph_data, event.tick, value)
         end
     end
 end)

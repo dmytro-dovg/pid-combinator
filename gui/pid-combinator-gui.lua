@@ -49,10 +49,6 @@ function this.destroy(player_index, unit_number)
     if next(storage.pid_guis[player_index]) == nil then
         storage.pid_guis[player_index] = nil
     end
-    local state = storage.pid and storage.pid[unit_number]
-    if state then
-        state.graph_data_points = List.new()
-    end
 end
 
 function this.gui_count()
@@ -223,7 +219,7 @@ function this.display(player, state)
     gui_state.controls.time_scale_slider = slider
 end
 
-function this.plot(player, gui_state, value, tick)
+function this.plot(player, gui_state, data, tick)
     if not gui_state then return end
     local surface = gui_state.graph.surface
     if not surface then return end
@@ -256,18 +252,7 @@ function this.plot(player, gui_state, value, tick)
         }
     end
 
-    local data = gui_state.graph.data
-
-    List.pushright(data, { tick = tick, value = value })
-
-    if List.length(data) < 2 then return end
-
-    -- Trim older data points
-    while List.length(data) > 0 and (tick - data[data.first].tick) / 60 > 25 do
-        List.popleft(data)
-    end
-
-    for i=data.first + 1,data.last do
+    for i=data.first + 1, data.last do
         local p1 = data[i - 1]
         local p2 = data[i]
         local from = { 2*offset.x - (tick - p1.tick) / ticks_per_second * tiles_per_second, -p1.value / scale}
