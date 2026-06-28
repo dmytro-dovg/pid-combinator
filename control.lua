@@ -110,7 +110,7 @@ end
 local function on_gui_open(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
-    local state = storage.pid[entity.unit_number]
+    local state = storage.pid and storage.pid[entity.unit_number]
     if not state then return end
     debugp("Opening " .. entity.name)
     local player = game.get_player(event.player_index)
@@ -208,7 +208,7 @@ script.on_event(defines.events.on_tick, function(event)
                 local point = { tick = event.tick, value = value[2] }
                 List.pushright(data, point)
                 if List.length(data) >= 2 then
-                    -- Trim data points older than 1 minute
+                    -- Trim older data points
                     while List.length(data) > 0 and (event.tick - data[data.first].tick) / 60 > 25 do
                         List.popleft(data)
                     end

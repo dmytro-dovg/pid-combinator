@@ -44,6 +44,9 @@ function this.destroy(player_index, unit_number)
     end
     storage.pid_guis[player_index][unit_number] = nil
     storage.pid_guis_count = storage.pid_guis_count -1
+    if next(storage.pid_guis[player_index]) == nil then
+        storage.pid_guis[player.index] = nil
+    end
 end
 
 function this.gui_count()
