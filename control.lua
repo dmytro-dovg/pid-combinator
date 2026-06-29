@@ -95,9 +95,7 @@ local function create_output_for(entity)
     return hidden
 end
 
-local function on_built(event)
-    local entity = event.entity
-    if not entity or entity.name ~= "pid-combinator" then return end
+local function setup_combinator(entity, settings)
     if storage.pid and storage.pid[entity.unit_number] then return end
     local output_entity = create_output_for(entity)
     debugp("Created main " .. serpent.dump(entity))
@@ -113,28 +111,35 @@ local function on_built(event)
         prev_tick = nil,
         graph_data = List.new(),
     }
-    local settings = storage.pid[entity.unit_number]
-    local carryover_settings = event.tags and event.tags.pid_settings
-    if carryover_settings then
-        copy_settings(carryover_settings, settings)
+    local new_settings = storage.pid[entity.unit_number]
+    if settings then
+        copy_settings(settings, new_settings)
     else
         -- PID settings
-        settings.kp = 1.0
-        settings.ki = 0.0
-        settings.kd = 0.0
+        new_settings.kp = 1.0
+        new_settings.ki = 0.0
+        new_settings.kd = 0.0
         -- anti-windup
-        settings.max_integral = 200
-        settings.signals = {
+        new_settings.max_integral = 200
+        new_settings.signals = {
             pv = { name = "signal-V", type = "virtual" },
             sp = { name = "signal-S", type = "virtual" },
             output = { name = "signal-check", type = "virtual" },
         }
-        settings.networks = {
+        new_settings.networks = {
             pv = { red = true, green = true, },
             sp = { red = true, green = true, },
             output = { red = true, green = true, },
         }
     end
+end
+
+local function on_built(event)
+    debugp("on_built")
+    local entity = event.entity
+    if not entity or entity.name ~= "pid-combinator" then return end
+    local carryover_settings = event.tags and event.tags.pid_settings
+    setup_combinator(entity, carryover_settings)
 end
 
 local function on_removed(event)
@@ -247,6 +252,11 @@ script.on_event(defines.events.on_post_entity_died, function(event)
         storage.pid[unit_number] = nil
     end
 end, {{filter="type", type="arithmetic-combinator"}})
+
+script.on_event(defines.events.on_entity_cloned, function(event)
+    local carryover_settings = event.source.unit_number and storage.pid[event.source.unit_number]
+    setup_combinator(event.destination, carryover_settings)
+end)
 
 local function process_pid(state, tick)
     local entity = state.entity
