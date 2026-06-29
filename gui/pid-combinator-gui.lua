@@ -320,6 +320,7 @@ function this.display(player, state)
 
     tabbed_pane.add_tab(tab_variables, tab_variables_content)
     tabbed_pane.add_tab(tab_tuning, tab_tuning_content)
+    tabbed_pane.selected_tab_index = 1
 
     local tab_variables_content_left = tab_variables_content.add {
         type = "flow",

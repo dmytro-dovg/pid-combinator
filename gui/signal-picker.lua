@@ -56,7 +56,6 @@ function this.new(parent, title, config)
         type = "choose-elem-button",
         name = config.choose_elem_button_name,
         elem_type = "signal",
-        elem_value = "signal",
         signal = config.signal,
     }
 end
