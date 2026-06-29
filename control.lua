@@ -136,6 +136,45 @@ local function on_removed(event)
 
 end
 
+local function copy_settings(source, destination)
+    destination.kp = source.kp
+    destination.ki = source.ki
+    destination.kd = source.kd
+
+    destination.max_integral = source.max_integral
+
+    destination.signals = {
+        pv = { name = source.signals.pv.name, type = source.signals.pv.type },
+        sp = { name = source.signals.sp.name, type = source.signals.sp.type },
+        output = { name = source.signals.output.name, type = source.signals.output.type },
+    }
+
+    destination.networks = {
+        pv = { red = source.networks.pv.red, green = source.networks.pv.green },
+        sp  = { red = source.networks.sp.red, green = source.networks.sp.green },
+        output = { red = source.networks.output.red, green = source.networks.output.green },
+    }
+end
+
+script.on_event(defines.events.on_entity_settings_pasted, function(event)
+    local src_number = event.source.unit_number
+    local dst_number = event.destination.unit_number
+    if not src_number or not dst_number then return end
+
+    local src_state = storage.pid[src_number]
+    local dst_state = storage.pid[dst_number]
+
+    if not src_state or not dst_state then return end
+
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+
+    if player.force ~= event.destination.force or
+       player.force ~= event.source.force then return end
+
+    copy_settings(src_state, dst_state)
+end)
+
 local function on_gui_open(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
