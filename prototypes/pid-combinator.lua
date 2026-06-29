@@ -81,7 +81,7 @@ hidden_constant_combinator.flags = {
 hidden_constant_combinator.active_energy_usage = '0.0W'
 hidden_constant_combinator.activity_led_sprites = nil
 hidden_constant_combinator.collision_box = nil
-hidden_constant_combinator.collision_mask = nil
+hidden_constant_combinator.collision_mask = { layers = {} }
 hidden_constant_combinator.draw_circuit_wires = false
 hidden_constant_combinator.energy_source = { type = 'void' }
 hidden_constant_combinator.hidden = true
