@@ -73,6 +73,11 @@ local function on_built(event)
             sp = { name = "signal-S", type = "virtual" },
             output = { name = "signal-check", type = "virtual" },
         },
+        networks = {
+            pv = { red = true, green = true, },
+            sp = { red = true, green = true, },
+            output = { red = true, green = true, },
+        },
         -- PID state
         integral = 0,
         prev_error = 0,
@@ -171,13 +176,21 @@ local function process_pid(state, tick)
     local max_integral = state.max_integral
     -- TODO: toggle networks
     if red_network then
-        pv = pv + (red_network.get_signal(state.signals.pv) or 0)
-        sp = sp + (red_network.get_signal(state.signals.sp) or 0)
+        if state.networks.pv.red then
+            pv = pv + (red_network.get_signal(state.signals.pv) or 0)
+        end
+        if state.networks.sp.red then
+            sp = sp + (red_network.get_signal(state.signals.sp) or 0)
+        end
     end
 
     if green_network then
-        pv = pv + (green_network.get_signal(state.signals.pv) or 0)
-        sp = sp + (green_network.get_signal(state.signals.sp) or 0)
+        if state.networks.pv.green then
+            pv = pv + (green_network.get_signal(state.signals.pv) or 0)
+        end
+        if state.networks.sp.green then
+            sp = sp + (green_network.get_signal(state.signals.sp) or 0)
+        end
     end
 
     local err = sp - pv

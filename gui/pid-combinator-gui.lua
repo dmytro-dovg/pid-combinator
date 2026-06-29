@@ -339,16 +339,20 @@ function this.display(player, state)
 
 
     SignalPicker.new(tab_variables_content_left, "Setpoint", {
-        r_checkbox_name = "sp_r_checkbox",
-        g_checkbox_name = "sp_g_checkbox",
+        r_checkbox_name = "sp_r_checkbox_" .. unit_number,
+        g_checkbox_name = "sp_g_checkbox_" .. unit_number,
+        r_state = state.networks.sp.red,
+        g_state = state.networks.sp.green,
         choose_elem_button_name = "sp_choose_elem_button_" .. unit_number,
         signal = state.signals.sp,
     })
 
 
     SignalPicker.new(tab_variables_content_left, "Process Variable", {
-        r_checkbox_name = "pv_r_checkbox",
-        g_checkbox_name = "pv_g_checkbox",
+        r_checkbox_name = "pv_r_checkbox_" .. unit_number,
+        g_checkbox_name = "pv_g_checkbox_" .. unit_number,
+        r_state = state.networks.pv.red,
+        g_state = state.networks.pv.green,
         choose_elem_button_name = "pv_choose_elem_button_" .. unit_number,
         signal = state.signals.pv,
     })
@@ -360,8 +364,10 @@ function this.display(player, state)
     tab_variables_content_filler.style.horizontally_stretchable = true
 
     SignalPicker.new(tab_variables_content_left, "Output", {
-        r_checkbox_name = "output_r_checkbox",
-        g_checkbox_name = "output_g_checkbox",
+        r_checkbox_name = "output_r_checkbox_" .. unit_number,
+        g_checkbox_name = "output_g_checkbox_" .. unit_number,
+        r_state = state.networks.output.red,
+        g_state = state.networks.output.green,
         choose_elem_button_name = "output_choose_elem_button_" .. unit_number,
         signal = state.signals.output,
     })
@@ -505,6 +511,21 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
     end
 end)
 
+script.on_event(defines.events.on_gui_checked_state_changed, function(event)
+    for match_component, matched_network, matched_unit in string.gmatch(event.element.name, "([a-z]+)_(.)_checkbox_([0-9]+)") do
+        local unit_number = tonumber(matched_unit)
+        if not unit_number then break end
+
+        local state = storage.pid[unit_number]
+        local value = event.element.state
+        local network = matched_network == "r" and "red" or "green"
+        local network_state = state.networks[match_component]
+
+        if state and network_state then
+            network_state[network] = value
+        end
+    end
+end)
 
 script.on_event(defines.events.on_gui_click, function(event)
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))

@@ -30,24 +30,24 @@ function this.new(parent, title, config)
 
     signal_table.add {
         type = "checkbox",
-        state = config.r_state or true,
+        name = config.r_checkbox_name,
+        state = config.r_state,
     }
 
     signal_table.add {
         type = "label",
-        name = config.r_checkbox_name,
         caption = "R",
         style = "grey_label",
     }
 
     signal_table.add {
         type = "checkbox",
-        state = config.g_state or true,
+        name = config.g_checkbox_name,
+        state = config.g_state,
     }
 
     signal_table.add {
         type = "label",
-        name = config.g_checkbox_name,
         caption = "G",
         style = "grey_label",
     }
