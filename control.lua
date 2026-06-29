@@ -266,16 +266,13 @@ local function process_pid(state, tick)
 
     if not red_network and not green_network then return end
 
-    --debugp("Red " .. serpent.dump(red_network))
-    --debugp("Green " .. serpent.dump(green_network))
-
     local pv = 0
     local sp = 0
     local kp = state.kp
     local ki = state.ki
     local kd = state.kd
     local max_integral = state.max_integral
-    -- TODO: toggle networks
+
     if red_network then
         if state.signals.pv and state.networks.pv.red then
             pv = pv + (red_network.get_signal(state.signals.pv) or 0)
