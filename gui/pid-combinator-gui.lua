@@ -341,16 +341,16 @@ function this.display(player, state)
     SignalPicker.new(tab_variables_content_left, "Setpoint", {
         r_checkbox_name = "sp_r_checkbox",
         g_checkbox_name = "sp_g_checkbox",
-        choose_elem_button_name = "sp_choose_elem_button",
-        signal = { name = "signal-S", type = "virtual" },
+        choose_elem_button_name = "sp_choose_elem_button_" .. unit_number,
+        signal = state.signals.sp,
     })
 
 
     SignalPicker.new(tab_variables_content_left, "Process Variable", {
         r_checkbox_name = "pv_r_checkbox",
         g_checkbox_name = "pv_g_checkbox",
-        choose_elem_button_name = "pv_choose_elem_button",
-        signal = { name = "signal-V", type = "virtual" },
+        choose_elem_button_name = "pv_choose_elem_button_" .. unit_number,
+        signal = state.signals.pv,
     })
 
     local tab_variables_content_filler = tab_variables_content_left.add {
@@ -362,8 +362,8 @@ function this.display(player, state)
     SignalPicker.new(tab_variables_content_left, "Output", {
         r_checkbox_name = "output_r_checkbox",
         g_checkbox_name = "output_g_checkbox",
-        choose_elem_button_name = "output_choose_elem_button",
-        signal = { name = "signal-check", type = "virtual" },
+        choose_elem_button_name = "output_choose_elem_button_" .. unit_number,
+        signal = state.signals.output,
     })
 
     -- local slider = tab_variables_content_left.add {
@@ -427,56 +427,90 @@ function this.display(player, state)
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
-    for key, value in string.gmatch(event.element.name, "pid_combinator_k([a-z])_slider_([0-9]+)") do
-        local unit_number = tonumber(value)
-        local state = storage.pid[tonumber(value)]
-        local gui_state =  storage.pid_guis[unit_number][event.player_index]
-        local slider_value = event.element.slider_value
-        if key == 'p' then
-            state.kp = slider_value
-            gui_state.kp_views.textfield.text = tostring(slider_value)
-        elseif key == 'i' then
-            state.ki = slider_value
-            gui_state.ki_views.textfield.text = tostring(slider_value)
-        elseif key == 'd' then
-            state.kd = slider_value
-            gui_state.kd_views.textfield.text = tostring(slider_value)
+    for match_component, matched_unit in string.gmatch(event.element.name, "pid_combinator_k([a-z])_slider_([0-9]+)") do
+        local unit_number = tonumber(matched_unit)
+        if not unit_number then break end
+
+        local state = storage.pid[unit_number]
+
+        local gui_state = storage.pid_guis[unit_number] and storage.pid_guis[unit_number][event.player_index]
+        local value = event.element.slider_value
+        local string_value = tostring(value)
+
+        if state and gui_state then
+            if match_component == 'p' then
+                state.kp = value
+                gui_state.kp_views.textfield.text = string_value
+            elseif match_component == 'i' then
+                state.ki = value
+                gui_state.ki_views.textfield.text = string_value
+            elseif match_component == 'd' then
+                state.kd = value
+                gui_state.kd_views.textfield.text = string_value
+            end
         end
     end
 
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
     if not matched_unit then return end
+
     local viewers = storage.pid_guis and storage.pid_guis[matched_unit]
     local gui_state = viewers and viewers[event.player_index]
+
     if not gui_state then return end
     gui_state.graph.time_scale = event.element.slider_value
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(event)
-    for key, value in string.gmatch(event.element.name, "pid_combinator_k([a-z])_textfield_([0-9]+)") do
-        local unit_number = tonumber(value)
-        local state = storage.pid[tonumber(value)]
-        local gui_state =  storage.pid_guis[unit_number][event.player_index]
+    for match_component, matched_unit in string.gmatch(event.element.name, "pid_combinator_k([a-z])_textfield_([0-9]+)") do
+        local unit_number = tonumber(matched_unit)
+        if not unit_number then break end
+
+        local state = storage.pid[unit_number]
+
+        local gui_state = storage.pid_guis[unit_number] and storage.pid_guis[unit_number][event.player_index]
         local value = tonumber(event.element.text)
-        if key == 'p' then
-            state.kp = value
-            gui_state.kp_views.slider.slider_value = value
-        elseif key == 'i' then
-            state.ki = value
-            gui_state.ki_views.slider.slider_value = value
-        elseif key == 'd' then
-            state.kd = value
-            gui_state.kd_views.slider.slider_value = value
+
+        if state and gui_state and value then
+            if match_component == 'p' then
+                state.kp = value
+                gui_state.kp_views.slider.slider_value = value
+            elseif match_component == 'i' then
+                state.ki = value
+                gui_state.ki_views.slider.slider_value = value
+            elseif match_component == 'd' then
+                state.kd = value
+                gui_state.kd_views.slider.slider_value = value
+            end
         end
     end
 end)
+
+script.on_event(defines.events.on_gui_elem_changed, function(event)
+    for match_component, matched_unit in string.gmatch(event.element.name, "([a-z]+)_choose_elem_button_([0-9]+)") do
+        local unit_number = tonumber(matched_unit)
+        if not unit_number then break end
+
+        local state = storage.pid[unit_number]
+        local value = event.element.elem_value
+        if state and value then
+            if match_component == 'sp' then
+                state.signals.sp = value
+            elseif match_component == 'pv' then
+                state.signals.pv = value
+            elseif match_component == 'output' then
+                state.signals.output = value
+            end
+        end
+    end
+end)
+
 
 script.on_event(defines.events.on_gui_click, function(event)
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))
     if not matched_unit then return end
     this.destroy(event.player_index, matched_unit)
 end)
-
 
 script.on_event(defines.events.on_player_display_scale_changed, function (event)
     local player = game.get_player(event.player_index)

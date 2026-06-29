@@ -16,8 +16,8 @@ local connector_id = {
     },
 }
 
-local function write_output(output_entity, value)
-    local cb = output_entity.get_or_create_control_behavior()
+local function write_output(state, value)
+    local cb = state.output_entity.get_or_create_control_behavior()
     local section = cb.get_section(1)
     if not section then
         section = cb.add_section("output")
@@ -25,8 +25,8 @@ local function write_output(output_entity, value)
     end
     local filter = {
         value = {
-            type = "virtual",
-            name = "signal-O",
+            type = state.signals.output.type,
+            name = state.signals.output.name,
             comparator = "=",
             quality = "normal",
         },
@@ -71,7 +71,7 @@ local function on_built(event)
         signals = {
             pv = { name = "signal-V", type = "virtual" },
             sp = { name = "signal-S", type = "virtual" },
-            out = { name = "signal-O", type = "virtual" },
+            output = { name = "signal-check", type = "virtual" },
         },
         -- PID state
         integral = 0,
@@ -199,7 +199,7 @@ local function process_pid(state, tick)
         + kd * derivative
 
 
-    write_output(state.output_entity, math.floor(output))
+    write_output(state, math.floor(output))
     return { output = output, pv = pv, sp = sp }
 end
 
