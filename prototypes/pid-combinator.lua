@@ -48,7 +48,9 @@ local function copy_prototype(ptype, name, new_name)
 end
 
 local combinator = copy_prototype("arithmetic-combinator", "arithmetic-combinator", "pid-combinator")
+combinator.icon = "__pid-combinator__/graphics/icons/pid-combinator.png"
 combinator.sprites = sprites
+combinator.corpse = "pid-combinator-remnants"
 combinator.plus_symbol_sprites = display_sprites
 combinator.minus_symbol_sprites = display_sprites
 combinator.multiply_symbol_sprites = display_sprites
