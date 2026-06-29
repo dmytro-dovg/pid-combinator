@@ -16,6 +16,26 @@ local connector_id = {
     },
 }
 
+local function copy_settings(source, destination)
+    destination.kp = source.kp
+    destination.ki = source.ki
+    destination.kd = source.kd
+
+    destination.max_integral = source.max_integral
+
+    destination.signals = {
+        pv = { name = source.signals.pv.name, type = source.signals.pv.type },
+        sp = { name = source.signals.sp.name, type = source.signals.sp.type },
+        output = { name = source.signals.output.name, type = source.signals.output.type },
+    }
+
+    destination.networks = {
+        pv = { red = source.networks.pv.red, green = source.networks.pv.green },
+        sp  = { red = source.networks.sp.red, green = source.networks.sp.green },
+        output = { red = source.networks.output.red, green = source.networks.output.green },
+    }
+end
+
 local function write_output(state, value)
     local cb = state.output_entity.get_or_create_control_behavior()
     local section = cb.get_section(1)
@@ -86,19 +106,6 @@ local function on_built(event)
     storage.pid[entity.unit_number] = {
         entity = entity,
         output_entity = output_entity,
-        -- PID settings
-        kp = 1.0, ki = 0.0, kd = 0.0,
-        max_integral = 200, -- anti-windup
-        signals = {
-            pv = { name = "signal-V", type = "virtual" },
-            sp = { name = "signal-S", type = "virtual" },
-            output = { name = "signal-check", type = "virtual" },
-        },
-        networks = {
-            pv = { red = true, green = true, },
-            sp = { red = true, green = true, },
-            output = { red = true, green = true, },
-        },
         pending_connection_changes = { },
         -- PID state
         integral = 0,
@@ -106,10 +113,31 @@ local function on_built(event)
         prev_tick = nil,
         graph_data = List.new(),
     }
+    local settings = storage.pid[entity.unit_number]
+    local carryover_settings = event.tags and event.tags.pid_settings
+    if carryover_settings then
+        copy_settings(carryover_settings, settings)
+    else
+        -- PID settings
+        settings.kp = 1.0
+        settings.ki = 0.0
+        settings.kd = 0.0
+        -- anti-windup
+        settings.max_integral = 200
+        settings.signals = {
+            pv = { name = "signal-V", type = "virtual" },
+            sp = { name = "signal-S", type = "virtual" },
+            output = { name = "signal-check", type = "virtual" },
+        }
+        settings.networks = {
+            pv = { red = true, green = true, },
+            sp = { red = true, green = true, },
+            output = { red = true, green = true, },
+        }
+    end
 end
 
 local function on_removed(event)
-    debugp("Event: " .. event.name)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
 
@@ -130,30 +158,11 @@ local function on_removed(event)
         state.output_entity.destroy()
     end
 
+    if event.name == defines.events.on_entity_died then return end
     if storage.pid then
         storage.pid[entity.unit_number] = nil
     end
 
-end
-
-local function copy_settings(source, destination)
-    destination.kp = source.kp
-    destination.ki = source.ki
-    destination.kd = source.kd
-
-    destination.max_integral = source.max_integral
-
-    destination.signals = {
-        pv = { name = source.signals.pv.name, type = source.signals.pv.type },
-        sp = { name = source.signals.sp.name, type = source.signals.sp.type },
-        output = { name = source.signals.output.name, type = source.signals.output.type },
-    }
-
-    destination.networks = {
-        pv = { red = source.networks.pv.red, green = source.networks.pv.green },
-        sp  = { red = source.networks.sp.red, green = source.networks.sp.green },
-        output = { red = source.networks.output.red, green = source.networks.output.green },
-    }
 end
 
 script.on_event(defines.events.on_entity_settings_pasted, function(event)
@@ -217,6 +226,27 @@ script.on_event(defines.events.on_player_removed, function(event)
 
     pid_gui.cleanup(player)
 end)
+
+script.on_event(defines.events.on_post_entity_died, function(event)
+    local unit_number = event.unit_number
+    local ghost = event.ghost
+    if not unit_number or event.prototype and event.prototype.name ~= "pid-combinator"  then return end
+
+    -- Copy setting to carry over to new entity via a ghost
+    if ghost then
+        local source = storage.pid[unit_number]
+
+        local pid_settings = {}
+        copy_settings(source, pid_settings)
+
+        event.ghost.tags = { pid_settings = pid_settings }
+    end
+
+    -- Cleaning up the state of dead enity
+    if storage.pid then
+        storage.pid[unit_number] = nil
+    end
+end, {{filter="type", type="arithmetic-combinator"}})
 
 local function process_pid(state, tick)
     local entity = state.entity
