@@ -21,7 +21,7 @@ function this.new(parent, title, config)
     local textfield = container.add {
         type = "textfield",
         name = config.textfield.name,
-        text = config.slider.value,
+        text = tostring(config.slider.value),
         numeric = true,
         allow_decimal = true,
     }
