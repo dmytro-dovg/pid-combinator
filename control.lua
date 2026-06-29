@@ -33,6 +33,23 @@ local function write_output(state, value)
         -- Clamp value as the game crashes when it goes out of bounds of int32
         min = math.min(2147483647, math.max(-2147483648, value)),
     }
+
+    local pending_changes = state.pending_connection_changes or {}
+    for _, change in pairs(pending_changes) do
+        local origin = defines.wire_origin.script
+        local wire_type = change.wire_type
+        local pid_combinator_connector = state.entity.get_wire_connector(connector_id.output[wire_type], false)
+        local output_combinator_connector = state.output_entity.get_wire_connector(connector_id.input[wire_type], false)
+
+        if change.value then
+            pid_combinator_connector.connect_to(output_combinator_connector, false, origin)
+        else
+            pid_combinator_connector.disconnect_from(output_combinator_connector, origin)
+        end
+    end
+
+    -- Empty list since changes were applied
+    state.pending_connection_changes = {}
     section.set_slot(1, filter)
 end
 
@@ -45,10 +62,10 @@ local function create_output_for(entity)
         create_build_effect_smoke = false,
     }
     hidden.destructible = false
-    for _, color in ipairs({"red", "green"}) do
-        local transmitter = entity.get_wire_connector(connector_id.output[color], true)
-        local receiver = hidden.get_wire_connector(connector_id.input[color], true)
-        transmitter.connect_to(receiver, false, defines.wire_origin.script)
+    for _, wire_type in ipairs({"red", "green"}) do
+        local pid_combinator_connector = entity.get_wire_connector(connector_id.output[wire_type], true)
+        local output_combinator_connector = hidden.get_wire_connector(connector_id.input[wire_type], true)
+        pid_combinator_connector.connect_to(output_combinator_connector, false, defines.wire_origin.script)
     end
 
     return hidden
@@ -78,6 +95,7 @@ local function on_built(event)
             sp = { red = true, green = true, },
             output = { red = true, green = true, },
         },
+        pending_connection_changes = { },
         -- PID state
         integral = 0,
         prev_error = 0,

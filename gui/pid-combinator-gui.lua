@@ -512,17 +512,24 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_checked_state_changed, function(event)
-    for match_component, matched_network, matched_unit in string.gmatch(event.element.name, "([a-z]+)_(.)_checkbox_([0-9]+)") do
+    for match_component, matched_wire_type, matched_unit in string.gmatch(event.element.name, "([a-z]+)_(.)_checkbox_([0-9]+)") do
         local unit_number = tonumber(matched_unit)
         if not unit_number then break end
 
         local state = storage.pid[unit_number]
         local value = event.element.state
-        local network = matched_network == "r" and "red" or "green"
+        local wire_type = matched_wire_type == "r" and "red" or "green"
         local network_state = state.networks[match_component]
 
         if state and network_state then
-            network_state[network] = value
+            network_state[wire_type] = value
+        end
+
+        -- Output is handled differently.
+        -- We control it by disconnecting output constant combinator from PID combinator outputs.
+        if match_component == 'output' then
+            state.pending_connection_changes = state.pending_connection_changes or {}
+            table.insert(state.pending_connection_changes, { wire_type = wire_type, value = value, })
         end
     end
 end)
