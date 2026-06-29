@@ -433,28 +433,26 @@ function this.display(player, state)
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
-    for match_component, matched_unit in string.gmatch(event.element.name, "pid_combinator_k([a-z])_slider_([0-9]+)") do
-        local unit_number = tonumber(matched_unit)
-        if not unit_number then break end
+    local match_component, matched_unit = event.element.name:match("^pid_combinator_k([a-z])_slider_([0-9]+)")
+    local unit_number = tonumber(matched_unit)
+    if not unit_number then return end
 
-        local state = storage.pid[unit_number]
+    local state = storage.pid and storage.pid[unit_number]
 
-        local gui_state = storage.pid_guis[unit_number] and storage.pid_guis[unit_number][event.player_index]
-        local value = event.element.slider_value
-        local string_value = tostring(value)
+    local gui_state = storage.pid_guis and storage.pid_guis[unit_number] and storage.pid_guis[unit_number][event.player_index]
+    local value = event.element.slider_value
+    local string_value = tostring(value)
 
-        if state and gui_state then
-            if match_component == 'p' then
-                state.kp = value
-                gui_state.kp_views.textfield.text = string_value
-            elseif match_component == 'i' then
-                state.ki = value
-                gui_state.ki_views.textfield.text = string_value
-            elseif match_component == 'd' then
-                state.kd = value
-                gui_state.kd_views.textfield.text = string_value
-            end
-        end
+    if not state or not gui_state then return end
+    if match_component == 'p' then
+        state.kp = value
+        gui_state.kp_views.textfield.text = string_value
+    elseif match_component == 'i' then
+        state.ki = value
+        gui_state.ki_views.textfield.text = string_value
+    elseif match_component == 'd' then
+        state.kd = value
+        gui_state.kd_views.textfield.text = string_value
     end
 
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
@@ -468,69 +466,68 @@ script.on_event(defines.events.on_gui_value_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(event)
-    for match_component, matched_unit in string.gmatch(event.element.name, "pid_combinator_k([a-z])_textfield_([0-9]+)") do
-        local unit_number = tonumber(matched_unit)
-        if not unit_number then break end
+    local match_component, matched_unit = event.element.name:match("^pid_combinator_k([a-z])_textfield_([0-9]+)")
+    local unit_number = tonumber(matched_unit)
+    if not unit_number then return end
 
-        local state = storage.pid[unit_number]
+    local state = storage.pid and storage.pid[unit_number]
 
-        local gui_state = storage.pid_guis[unit_number] and storage.pid_guis[unit_number][event.player_index]
-        local value = tonumber(event.element.text)
+    local gui_state = storage.pid_guis and storage.pid_guis[unit_number] and storage.pid_guis[unit_number][event.player_index]
+    local value = tonumber(event.element.text)
 
-        if state and gui_state and value then
-            if match_component == 'p' then
-                state.kp = value
-                gui_state.kp_views.slider.slider_value = value
-            elseif match_component == 'i' then
-                state.ki = value
-                gui_state.ki_views.slider.slider_value = value
-            elseif match_component == 'd' then
-                state.kd = value
-                gui_state.kd_views.slider.slider_value = value
-            end
-        end
+    if not state or not gui_state or not value then return end
+
+    if match_component == 'p' then
+        state.kp = value
+        gui_state.kp_views.slider.slider_value = value
+    elseif match_component == 'i' then
+        state.ki = value
+        gui_state.ki_views.slider.slider_value = value
+    elseif match_component == 'd' then
+        state.kd = value
+        gui_state.kd_views.slider.slider_value = value
     end
 end)
 
 script.on_event(defines.events.on_gui_elem_changed, function(event)
-    for match_component, matched_unit in string.gmatch(event.element.name, "([a-z]+)_choose_elem_button_([0-9]+)") do
-        local unit_number = tonumber(matched_unit)
-        if not unit_number then break end
+    local match_component, matched_unit = event.element.name:match("^([a-z]+)_choose_elem_button_([0-9]+)")
+    local unit_number = tonumber(matched_unit)
+    if not unit_number then return end
 
-        local state = storage.pid[unit_number]
-        local value = event.element.elem_value
-        if state and value then
-            if match_component == 'sp' then
-                state.signals.sp = value
-            elseif match_component == 'pv' then
-                state.signals.pv = value
-            elseif match_component == 'output' then
-                state.signals.output = value
-            end
+    local state = storage.pid and storage.pid[unit_number]
+    local value = event.element.elem_value
+    if state and value then
+        if match_component == 'sp' then
+            state.signals.sp = value
+        elseif match_component == 'pv' then
+            state.signals.pv = value
+        elseif match_component == 'output' then
+            state.signals.output = value
         end
     end
 end)
 
 script.on_event(defines.events.on_gui_checked_state_changed, function(event)
-    for match_component, matched_wire_type, matched_unit in string.gmatch(event.element.name, "([a-z]+)_(.)_checkbox_([0-9]+)") do
-        local unit_number = tonumber(matched_unit)
-        if not unit_number then break end
+    local match_component, matched_wire_type, matched_unit = event.element.name:match("^([a-z]+)_(.)_checkbox_([0-9]+)")
+    local unit_number = tonumber(matched_unit)
+    if not unit_number then return end
 
-        local state = storage.pid[unit_number]
-        local value = event.element.state
-        local wire_type = matched_wire_type == "r" and "red" or "green"
-        local network_state = state.networks[match_component]
+    local state = storage.pid and storage.pid[unit_number]
+    if not state then return end
 
-        if state and network_state then
-            network_state[wire_type] = value
-        end
+    local value = event.element.state
+    local wire_type = matched_wire_type == "r" and "red" or "green"
+    local network_state = state.networks[match_component]
 
-        -- Output is handled differently.
-        -- We control it by disconnecting output constant combinator from PID combinator outputs.
-        if match_component == 'output' then
-            state.pending_connection_changes = state.pending_connection_changes or {}
-            table.insert(state.pending_connection_changes, { wire_type = wire_type, value = value, })
-        end
+    if network_state then
+        network_state[wire_type] = value
+    end
+
+    -- Output is handled differently.
+    -- We control it by disconnecting output constant combinator from PID combinator outputs.
+    if match_component == 'output' then
+        state.pending_connection_changes = state.pending_connection_changes or {}
+        table.insert(state.pending_connection_changes, { wire_type = wire_type, value = value, })
     end
 end)
 
