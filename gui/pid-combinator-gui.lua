@@ -386,44 +386,89 @@ function this.display(player, state)
     }
     tab_tuning_content_left.style.horizontally_stretchable = true
 
-    ValueSlider.new(tab_tuning_content_left, "Kp", {
+    gui_state.kp_views = ValueSlider.new(tab_tuning_content_left, "Kp", {
         slider = {
-            name = "pid_combinator_kp",
+            name = "pid_combinator_kp_slider_" .. unit_number,
             minimum_value = 0.0,
             maximum_value = 5,
-            value = 1.2,
+            value = state.kp,
             value_step = 0.1,
-        }
+        },
+        textfield = {
+            name = "pid_combinator_kp_textfield_" .. unit_number,
+        },
     })
 
-    ValueSlider.new(tab_tuning_content_left, "Ki", {
+    gui_state.ki_views = ValueSlider.new(tab_tuning_content_left, "Ki", {
         slider = {
-            name = "pid_combinator_ki",
+            name = "pid_combinator_ki_slider_" .. unit_number,
             minimum_value = 0.0,
             maximum_value = 5,
-            value = 0.6,
+            value = state.ki,
             value_step = 0.1,
-        }
+        },
+        textfield = {
+            name = "pid_combinator_ki_textfield_" .. unit_number,
+        },
     })
 
-    ValueSlider.new(tab_tuning_content_left, "Kd", {
+    gui_state.kd_views = ValueSlider.new(tab_tuning_content_left, "Kd", {
         slider = {
-            name = "pid_combinator_kd",
+            name = "pid_combinator_kd_slider_" .. unit_number,
             minimum_value = 0.0,
             maximum_value = 5,
-            value = 0.2,
+            value = state.kd,
             value_step = 0.1,
-        }
+        },
+        textfield = {
+            name = "pid_combinator_kd_textfield_" .. unit_number,
+        },
     })
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
+    for key, value in string.gmatch(event.element.name, "pid_combinator_k([a-z])_slider_([0-9]+)") do
+        local unit_number = tonumber(value)
+        local state = storage.pid[tonumber(value)]
+        local gui_state =  storage.pid_guis[unit_number][event.player_index]
+        local slider_value = event.element.slider_value
+        if key == 'p' then
+            state.kp = slider_value
+            gui_state.kp_views.textfield.text = tostring(slider_value)
+        elseif key == 'i' then
+            state.ki = slider_value
+            gui_state.ki_views.textfield.text = tostring(slider_value)
+        elseif key == 'd' then
+            state.kd = slider_value
+            gui_state.kd_views.textfield.text = tostring(slider_value)
+        end
+    end
+
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
     if not matched_unit then return end
     local viewers = storage.pid_guis and storage.pid_guis[matched_unit]
     local gui_state = viewers and viewers[event.player_index]
     if not gui_state then return end
     gui_state.graph.time_scale = event.element.slider_value
+end)
+
+script.on_event(defines.events.on_gui_text_changed, function(event)
+    for key, value in string.gmatch(event.element.name, "pid_combinator_k([a-z])_textfield_([0-9]+)") do
+        local unit_number = tonumber(value)
+        local state = storage.pid[tonumber(value)]
+        local gui_state =  storage.pid_guis[unit_number][event.player_index]
+        local value = tonumber(event.element.text)
+        if key == 'p' then
+            state.kp = value
+            gui_state.kp_views.slider.slider_value = value
+        elseif key == 'i' then
+            state.ki = value
+            gui_state.ki_views.slider.slider_value = value
+        elseif key == 'd' then
+            state.kd = value
+            gui_state.kd_views.slider.slider_value = value
+        end
+    end
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
