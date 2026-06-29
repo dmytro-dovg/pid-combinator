@@ -23,16 +23,6 @@ local function write_output(state, value)
         section = cb.add_section("output")
         section.active = true
     end
-    local filter = {
-        value = {
-            type = state.signals.output.type,
-            name = state.signals.output.name,
-            comparator = "=",
-            quality = "normal",
-        },
-        -- Clamp value as the game crashes when it goes out of bounds of int32
-        min = math.min(2147483647, math.max(-2147483648, value)),
-    }
 
     local pending_changes = state.pending_connection_changes or {}
     for _, change in pairs(pending_changes) do
@@ -50,7 +40,21 @@ local function write_output(state, value)
 
     -- Empty list since changes were applied
     state.pending_connection_changes = {}
-    section.set_slot(1, filter)
+
+    if state.signals.output then
+        section.set_slot(1, {
+            value = {
+                type = state.signals.output.type,
+                name = state.signals.output.name,
+                comparator = "=",
+                quality = "normal",
+            },
+            -- Clamp value as the game crashes when it goes out of bounds of int32
+            min = math.min(2147483647, math.max(-2147483648, math.floor(value))),
+        })
+    else
+        section.clear_slot(1)
+    end
 end
 
 local function create_output_for(entity)
@@ -194,19 +198,19 @@ local function process_pid(state, tick)
     local max_integral = state.max_integral
     -- TODO: toggle networks
     if red_network then
-        if state.networks.pv.red then
+        if state.signals.pv and state.networks.pv.red then
             pv = pv + (red_network.get_signal(state.signals.pv) or 0)
         end
-        if state.networks.sp.red then
+        if state.signals.sp and state.networks.sp.red then
             sp = sp + (red_network.get_signal(state.signals.sp) or 0)
         end
     end
 
     if green_network then
-        if state.networks.pv.green then
+        if state.signals.pv and state.networks.pv.green then
             pv = pv + (green_network.get_signal(state.signals.pv) or 0)
         end
-        if state.networks.sp.green then
+        if state.signals.sp and state.networks.sp.green then
             sp = sp + (green_network.get_signal(state.signals.sp) or 0)
         end
     end
@@ -230,7 +234,7 @@ local function process_pid(state, tick)
         + kd * derivative
 
 
-    write_output(state, math.floor(output))
+    write_output(state, output)
     return { output = output, pv = pv, sp = sp }
 end
 

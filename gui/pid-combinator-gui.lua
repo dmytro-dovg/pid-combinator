@@ -496,7 +496,7 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
 
     local state = storage.pid and storage.pid[unit_number]
     local value = event.element.elem_value
-    if state and value then
+    if state then
         if match_component == 'sp' then
             state.signals.sp = value
         elseif match_component == 'pv' then
