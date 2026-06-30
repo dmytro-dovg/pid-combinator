@@ -23,6 +23,29 @@ local consts = {
 local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts.viewport.height / consts.tile_size) / 2 }
 local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
+local function status_visuals(status)
+    local visuals = {
+        [defines.entity_status.no_power] = { sprite = "utility/status_not_working", caption = {"entity-status.no-power"} },
+        [defines.entity_status.low_power] = { sprite = "utility/status_yellow", caption = {"entity-status.low-power"} },
+        ghost = { sprite = "utility/status_yellow", caption = {"entity-status.ghost"} },
+        default = { sprite = "utility/status_working", caption = {"entity-status.working"} },
+    }
+    return visuals[status] or visuals.default
+end
+
+local function update_status(viewers, status)
+    for _, gui_state in pairs(viewers) do
+        if gui_state.controls.last_status ~= status then
+            gui_state.controls.last_status = status
+            local status_visuals = status_visuals(status)
+            local sprite_element = gui_state.controls.status_sprite
+            local label_element = gui_state.controls.status_label
+            if sprite_element and sprite_element.valid then sprite_element.sprite = status_visuals.sprite end
+            if label_element and label_element.valid then label_element.caption = status_visuals.caption end
+        end
+    end
+end
+
 local function gui_state(player_index, unit_number)
     local viewers = storage.pid_guis and storage.pid_guis[unit_number]
     return viewers and viewers[player_index]
@@ -156,11 +179,13 @@ local function plot(player, gui_state, data, tick)
     end
 end
 
-function PidCombinatorGui.on_tick(unit_number, data, tick, value)
-    if not data or not value then return end
-
+function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
     local viewers = storage.pid_guis and storage.pid_guis[unit_number]
     if not viewers then return end
+
+    update_status(viewers, status)
+
+    if not data or not value then return end
 
     List.pushright(data, { tick = tick, value = value.pv })
 
@@ -241,17 +266,53 @@ function PidCombinatorGui.display(player, target)
         type = "frame",
         style = "subheader_frame",
     }
-    header.style.height = 32
+    header.style.height = 36
     header.style.horizontally_stretchable = true
-    header.style.bottom_margin = 24
+    header.style.bottom_margin = 8
+
+    local initial_status
+    if gui_state.target.kind == "ghost" then
+        initial_status = "ghost"
+    else
+        local entity = target:preview_entity()
+        initial_status = entity and entity.valid and entity.status or nil
+    end
+    local status_viusuals = status_visuals(initial_status)
+
+    local status_flow = contents.add {
+        type = "flow",
+        direction = "horizontal",
+        name = "status_flow",
+    }
+    status_flow.style.vertical_align = "center"
+    status_flow.style.left_padding = 12
+    status_flow.style.bottom_padding = 8
+    status_flow.style.horizontal_spacing = 4
+
+    local status_sprite = status_flow.add {
+        type = "sprite",
+        name = "status_sprite",
+        sprite = status_viusuals.sprite,
+    }
+    status_sprite.style.size = 16
+
+    local status_label = status_flow.add {
+        type = "label",
+        name = "status_label",
+        caption = status_viusuals.caption,
+    }
+
+    gui_state.controls.status_sprite = status_sprite
+    gui_state.controls.status_label = status_label
+    gui_state.controls.last_status = initial_status
 
     local section_1 = contents.add {
         type = "flow",
         direction = "horizontal",
         name = "section_1",
     }
-    section_1.style.horizontal_spacing = 8
-    section_1.style.padding = 8
+    section_1.style.horizontal_spacing = 12
+    section_1.style.padding = 12
     section_1.style.top_padding = 0
     section_1.style.bottom_padding = 0
 

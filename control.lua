@@ -269,6 +269,14 @@ end)
 local function process_pid(state, tick)
     local entity = state.entity
 
+    if entity.status == defines.entity_status.no_power then
+        state.prev_tick = nil
+        local cb = state.output_entity.get_or_create_control_behavior()
+        local section = cb.get_section(1)
+        if section then section.clear_slot(1) end
+        return
+    end
+
     local red_network = entity.get_circuit_network(connector_id.input["red"])
     local green_network = entity.get_circuit_network(connector_id.input["green"])
 
@@ -329,7 +337,7 @@ script.on_event(defines.events.on_tick, function(event)
             storage.pid[unit_number] = nil
         else
             local value = process_pid(state, event.tick)
-            pid_gui.on_tick(unit_number, state.graph_data, event.tick, value)
+            pid_gui.on_tick(unit_number, state.entity.status, state.graph_data, event.tick, value)
         end
     end
 end)
