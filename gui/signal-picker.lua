@@ -7,12 +7,27 @@ function SignalPicker.new(parent, title, config)
         direction = "vertical",
     }
 
-    signal_outer_container.add {
+    local title_flow = signal_outer_container.add {
+        type = "flow",
+        direction = "horizontal",
+    }
+    title_flow.style.vertical_align = "center"
+    title_flow.style.horizontal_spacing = 4
+
+    title_flow.add {
         type = "label",
         caption = title,
         tooltip = config.title_tooltip,
         style = "bold_label",
     }
+
+    if config.title_tooltip then
+        title_flow.add {
+            type = "sprite",
+            sprite = "pid-combinator-info",
+            tooltip = config.title_tooltip,
+        }
+    end
 
     local signal_container = signal_outer_container.add {
         type = "flow",
