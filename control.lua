@@ -107,6 +107,7 @@ local function on_built(event)
     if not entity or entity.name ~= "pid-combinator" then return end
     local carryover_settings = event.tags and event.tags.pid_settings
     setup_combinator(entity, carryover_settings)
+    pid_gui.migrate_ghost_viewers(entity)
 end
 
 local function on_removed(event)

@@ -85,6 +85,41 @@ function PidCombinatorGui.gui_count()
     return storage.pid_guis_count or 0
 end
 
+function PidCombinatorGui.migrate_ghost_viewers(new_live_entity)
+    if not storage.pid_guis then return end
+    local new_unit_number = new_live_entity.unit_number
+    if not new_unit_number then return end
+    local new_surface_index = new_live_entity.surface.index
+    local new_position_x = new_live_entity.position.x
+    local new_position_y = new_live_entity.position.y
+
+    local migrations = {}
+    for ghost_unit_number, viewers in pairs(storage.pid_guis) do
+        if ghost_unit_number ~= new_unit_number then
+            for player_index, viewer_state in pairs(viewers) do
+                local ghost_origin = viewer_state.ghost_origin
+                if viewer_state.target and viewer_state.target.kind == "ghost" and ghost_origin
+                    and ghost_origin.surface_index == new_surface_index
+                    and ghost_origin.position.x == new_position_x
+                    and ghost_origin.position.y == new_position_y then
+                    migrations[#migrations + 1] = {
+                        ghost_unit_number = ghost_unit_number,
+                        player_index = player_index,
+                    }
+                end
+            end
+        end
+    end
+
+    for _, migration in ipairs(migrations) do
+        PidCombinatorGui.destroy(migration.player_index, migration.ghost_unit_number)
+        local player = game.get_player(migration.player_index)
+        if player and player.valid then
+            PidCombinatorGui.display(player, SettingsTarget.live(new_unit_number))
+        end
+    end
+end
+
 local function next_surface_id()
     storage.next_graph_surface_id = (storage.next_graph_surface_id or 0) + 1
     return storage.next_graph_surface_id
@@ -217,6 +252,17 @@ function PidCombinatorGui.display(player, target)
     local gui_state = entry
     -- Remember which data backend PidCombinatorGui GUI edits so handlers can resolve it.
     gui_state.target = target:descriptor()
+    if gui_state.target.kind == "ghost" then
+        local ghost_entity = target:preview_entity()
+        if ghost_entity and ghost_entity.valid then
+            gui_state.ghost_origin = {
+                surface_index = ghost_entity.surface.index,
+                position = { x = ghost_entity.position.x, y = ghost_entity.position.y },
+            }
+        end
+    else
+        gui_state.ghost_origin = nil
+    end
     local frame = player.gui.screen.add {
         type = "frame",
         name = "pid_combinator_frame_" .. player.index .. "_" .. unit_number,
