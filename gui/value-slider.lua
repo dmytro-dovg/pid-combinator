@@ -1,6 +1,6 @@
-local this = {}
+local ValueSlider = {}
 
-function this.new(parent, title, config)
+function ValueSlider.new(parent, title, config)
     local container = parent.add {
         type = "flow",
         direction = "horizontal",
@@ -30,4 +30,4 @@ function this.new(parent, title, config)
     return { textfield = textfield, slider = slider }
 end
 
-return this
+return ValueSlider

@@ -1,5 +1,7 @@
 local pid_gui = require "gui.pid-combinator-gui"
 local List = require "utils.list"
+local PidSettings = require "model.pid-settings"
+local SettingsTarget = require "gui.settings-target"
 
 local function debugp(msg)
     localised_print("[PID CONTROLLER]: " .. msg)
@@ -15,26 +17,6 @@ local connector_id = {
         green = defines.wire_connector_id.combinator_output_green,
     },
 }
-
-local function copy_settings(source, destination)
-    destination.kp = source.kp
-    destination.ki = source.ki
-    destination.kd = source.kd
-
-    destination.max_integral = source.max_integral
-
-    destination.signals = {
-        pv = { name = source.signals.pv.name, type = source.signals.pv.type },
-        sp = { name = source.signals.sp.name, type = source.signals.sp.type },
-        output = { name = source.signals.output.name, type = source.signals.output.type },
-    }
-
-    destination.networks = {
-        pv = { red = source.networks.pv.red, green = source.networks.pv.green },
-        sp  = { red = source.networks.sp.red, green = source.networks.sp.green },
-        output = { red = source.networks.output.red, green = source.networks.output.green },
-    }
-end
 
 local function write_output(state, value)
     local cb = state.output_entity.get_or_create_control_behavior()
@@ -113,24 +95,9 @@ local function setup_combinator(entity, settings)
     }
     local new_settings = storage.pid[entity.unit_number]
     if settings then
-        copy_settings(settings, new_settings)
+        PidSettings.copy(settings, new_settings)
     else
-        -- PID settings
-        new_settings.kp = 1.0
-        new_settings.ki = 0.0
-        new_settings.kd = 0.0
-        -- anti-windup
-        new_settings.max_integral = 200
-        new_settings.signals = {
-            pv = { name = "signal-V", type = "virtual" },
-            sp = { name = "signal-S", type = "virtual" },
-            output = { name = "signal-check", type = "virtual" },
-        }
-        new_settings.networks = {
-            pv = { red = true, green = true, },
-            sp = { red = true, green = true, },
-            output = { red = true, green = true, },
-        }
+        PidSettings.copy(PidSettings.defaults(), new_settings)
     end
 end
 
@@ -186,19 +153,31 @@ script.on_event(defines.events.on_entity_settings_pasted, function(event)
     if player.force ~= event.destination.force or
        player.force ~= event.source.force then return end
 
-    copy_settings(src_state, dst_state)
+    PidSettings.copy(src_state, dst_state)
 end)
 
 local function on_gui_open(event)
     local entity = event.entity
-    if not entity or entity.name ~= "pid-combinator" then return end
-    local state = storage.pid and storage.pid[entity.unit_number]
-    if not state then return end
-    debugp("Opening " .. entity.name)
+    if not entity then return end
+
     local player = game.get_player(event.player_index)
+    if not player then return end
+
+    local target
+    if entity.name == "pid-combinator" then
+        local state = storage.pid and storage.pid[entity.unit_number]
+        if not state then return end
+        target = SettingsTarget.live(entity.unit_number)
+    elseif entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
+        target = SettingsTarget.ghost(entity)
+    else
+        return
+    end
+
+    debugp("Opening " .. entity.name)
     pid_gui.destroy(event.player_index, entity.unit_number)
     player.opened = nil
-    pid_gui.display(player, state)
+    pid_gui.display(player, target)
 end
 
 local on_built_events = {
@@ -242,7 +221,7 @@ script.on_event(defines.events.on_post_entity_died, function(event)
         local source = storage.pid[unit_number]
 
         local pid_settings = {}
-        copy_settings(source, pid_settings)
+        PidSettings.copy(source, pid_settings)
 
         event.ghost.tags = { pid_settings = pid_settings }
     end

@@ -1,7 +1,7 @@
 
-local this = {}
+local SignalPicker = {}
 
-function this.new(parent, title, config)
+function SignalPicker.new(parent, title, config)
     local signal_outer_container = parent.add {
         type = "flow",
         direction = "vertical",
@@ -60,4 +60,4 @@ function this.new(parent, title, config)
     }
 end
 
-return this
+return SignalPicker
