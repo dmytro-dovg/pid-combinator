@@ -303,7 +303,7 @@ function PidCombinatorGui.display(player, target)
     titlebar.add {
         type = "label",
         style = "frame_title",
-        caption = "PID Combinator",
+        caption = {"gui-pid-combinator.title"},
         ignored_by_interaction = true,
     }
 
@@ -314,26 +314,29 @@ function PidCombinatorGui.display(player, target)
     }
     filler.style.horizontally_stretchable = true
     filler.style.height = 24
-    filler.style.right_margin = 4
+    filler.style.right_margin = 8
+    filler.style.left_margin = 8
 
     local pin_button = titlebar.add {
         type = "sprite-button",
         name = "pid_combinator_pin_button_" .. unit_number,
         style = "frame_action_button",
         sprite = "pid-combinator-pin",
-        tooltip = "Keep open when other windows are shown",
+        tooltip = {"gui-pid-combinator.pin-tooltip"},
     }
+    pin_button.style.right_margin = 4
     pin_button.toggled = false
     gui_state.controls.pin_button = pin_button
 
     -- Close button
-    titlebar.add {
+    local close_button = titlebar.add {
         type = "sprite-button",
         name = "pid_combinator_close_button_" .. unit_number,
         style = "frame_action_button",
         sprite = "utility/close",
-        tooltip = "Close",
+        tooltip = {"gui.close-instruction"},
     }
+    gui_state.controls.close_button = close_button
 
     local contents = frame.add {
         type = "frame",
@@ -406,7 +409,7 @@ function PidCombinatorGui.display(player, target)
 
     gui_state.graph.surface = gui_state.graph.surface or create_surface()
     gui_state.controls.graph = create_graph(gui_state, graph_frame, player.display_scale)
-    gui_state.controls.graph.tooltip = "Process Variable over time"
+    gui_state.controls.graph.tooltip = {"gui-pid-combinator.graph-tooltip"}
 
     local preview_frame = section_1.add {
         type = "frame",
@@ -438,15 +441,15 @@ function PidCombinatorGui.display(player, target)
 
     local tab_variables = tabbed_pane.add {
         type = "tab",
-        caption = "Variables",
-        tooltip = "Pick signals and network filters for setpoint, process variable, and output",
+        caption = {"gui-pid-combinator.tab-variables"},
+        tooltip = {"gui-pid-combinator.tab-variables-tooltip"},
     }
 
 
     local tab_tuning = tabbed_pane.add {
         type = "tab",
-        caption = "Tuning",
-        tooltip = "Adjust proportional, integral, and derivative gains",
+        caption = {"gui-pid-combinator.tab-tuning"},
+        tooltip = {"gui-pid-combinator.tab-tuning-tooltip"},
     }
 
     local tab_variables_content = tabbed_pane.add {
@@ -486,18 +489,18 @@ function PidCombinatorGui.display(player, target)
     -- tab_variables_content_right.style.horizontally_stretchable = true
 
 
-    local red_network_tooltip = "Toggle red network filter"
-    local green_network_tooltip = "Toggle green network filter"
+    local red_network_tooltip = {"gui-network-selector.red-connected"}
+    local green_network_tooltip = {"gui-network-selector.green-connected"}
 
     local sp_network = target:get_network("sp")
-    local sp_picker = SignalPicker.new(tab_variables_content_left, "Setpoint", {
+    local sp_picker = SignalPicker.new(tab_variables_content_left, {"gui-pid-combinator.setpoint"}, {
         r_checkbox_name = "sp_r_checkbox_" .. unit_number,
         g_checkbox_name = "sp_g_checkbox_" .. unit_number,
         r_state = sp_network.red,
         g_state = sp_network.green,
         r_tooltip = red_network_tooltip,
         g_tooltip = green_network_tooltip,
-        title_tooltip = "Target value the controller drives the process variable toward",
+        title_tooltip = {"gui-pid-combinator.setpoint-tooltip"},
         choose_elem_button_name = "sp_choose_elem_button_" .. unit_number,
         signal = target:get_signal("sp"),
     })
@@ -505,14 +508,14 @@ function PidCombinatorGui.display(player, target)
 
 
     local pv_network = target:get_network("pv")
-    local pv_picker = SignalPicker.new(tab_variables_content_left, "Process Variable", {
+    local pv_picker = SignalPicker.new(tab_variables_content_left, {"gui-pid-combinator.process-variable"}, {
         r_checkbox_name = "pv_r_checkbox_" .. unit_number,
         g_checkbox_name = "pv_g_checkbox_" .. unit_number,
         r_state = pv_network.red,
         g_state = pv_network.green,
         r_tooltip = red_network_tooltip,
         g_tooltip = green_network_tooltip,
-        title_tooltip = "Measured value of the system being controlled",
+        title_tooltip = {"gui-pid-combinator.process-variable-tooltip"},
         choose_elem_button_name = "pv_choose_elem_button_" .. unit_number,
         signal = target:get_signal("pv"),
     })
@@ -525,7 +528,7 @@ function PidCombinatorGui.display(player, target)
     tab_variables_content_filler.style.horizontally_stretchable = true
 
     local output_network = target:get_network("output")
-    local output_picker = SignalPicker.new(tab_variables_content_left, "Output", {
+    local output_picker = SignalPicker.new(tab_variables_content_left, {"gui-pid-combinator.output"}, {
         r_checkbox_name = "output_r_checkbox_" .. unit_number,
         g_checkbox_name = "output_g_checkbox_" .. unit_number,
         r_state = output_network.red,
@@ -557,7 +560,7 @@ function PidCombinatorGui.display(player, target)
     }
     tab_tuning_content_left.style.horizontally_stretchable = true
 
-    gui_state.kp_views = ValueSlider.new(tab_tuning_content_left, "Kp", {
+    gui_state.kp_views = ValueSlider.new(tab_tuning_content_left, {"gui-pid-combinator.gain-proportional"}, {
         slider = {
             name = "pid_combinator_kp_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -570,7 +573,7 @@ function PidCombinatorGui.display(player, target)
         },
     })
 
-    gui_state.ki_views = ValueSlider.new(tab_tuning_content_left, "Ki", {
+    gui_state.ki_views = ValueSlider.new(tab_tuning_content_left, {"gui-pid-combinator.gain-integral"}, {
         slider = {
             name = "pid_combinator_ki_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -583,7 +586,7 @@ function PidCombinatorGui.display(player, target)
         },
     })
 
-    gui_state.kd_views = ValueSlider.new(tab_tuning_content_left, "Kd", {
+    gui_state.kd_views = ValueSlider.new(tab_tuning_content_left, {"gui-pid-combinator.gain-derivative"}, {
         slider = {
             name = "pid_combinator_kd_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -696,6 +699,10 @@ script.on_event(defines.events.on_gui_click, function(event)
         if not player then return end
         event.element.toggled = not event.element.toggled
         event.element.sprite = event.element.toggled and "pid-combinator-pin-toggled" or "pid-combinator-pin"
+        local close_button = viewer_state.controls.close_button
+        if close_button and close_button.valid then
+            close_button.tooltip = event.element.toggled and {"gui.close"} or {"gui.close-instruction"}
+        end
         if event.element.toggled then
             if player.opened == viewer_state.frame then
                 player.opened = nil

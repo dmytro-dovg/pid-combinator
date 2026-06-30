@@ -38,7 +38,7 @@ function SignalPicker.new(parent, title, config)
 
     signal_table.add {
         type = "label",
-        caption = "R",
+        caption = {"gui-network-selector.red-label"},
         style = "grey_label",
     }
 
@@ -51,7 +51,7 @@ function SignalPicker.new(parent, title, config)
 
     signal_table.add {
         type = "label",
-        caption = "G",
+        caption = {"gui-network-selector.green-label"},
         style = "grey_label",
     }
 
