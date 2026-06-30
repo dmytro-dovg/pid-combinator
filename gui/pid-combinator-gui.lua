@@ -269,6 +269,7 @@ function PidCombinatorGui.display(player, target)
         direction = "vertical",
     }
     gui_state.frame = frame
+    frame.auto_center = true
 
     local titlebar = frame.add {
         type = "flow",
@@ -292,13 +293,22 @@ function PidCombinatorGui.display(player, target)
     filler.style.height = 24
     filler.style.right_margin = 4
 
+    local pin_button = titlebar.add {
+        type = "sprite-button",
+        name = "pid_combinator_pin_button_" .. unit_number,
+        style = "frame_action_button",
+        sprite = "pid-combinator-pin",
+        tooltip = "Keep open when other windows are shown",
+    }
+    pin_button.toggled = false
+    gui_state.controls.pin_button = pin_button
+
     -- Close button
     titlebar.add {
         type = "sprite-button",
         name = "pid_combinator_close_button_" .. unit_number,
         style = "frame_action_button",
         sprite = "utility/close",
-        clicked_sprite = "utility/close_black",
         tooltip = "Close",
     }
 
@@ -545,6 +555,8 @@ function PidCombinatorGui.display(player, target)
             name = "pid_combinator_kd_textfield_" .. unit_number,
         },
     })
+
+    player.opened = frame
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
@@ -636,9 +648,42 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
+    local pin_unit_number = tonumber(event.element.name:match("^pid_combinator_pin_button_(%d+)$"))
+    if pin_unit_number then
+        local viewer_state = gui_state(event.player_index, pin_unit_number)
+        if not viewer_state then return end
+        local player = game.get_player(event.player_index)
+        if not player then return end
+        event.element.toggled = not event.element.toggled
+        event.element.sprite = event.element.toggled and "pid-combinator-pin-toggled" or "pid-combinator-pin"
+        if event.element.toggled then
+            if player.opened == viewer_state.frame then
+                player.opened = nil
+            end
+        else
+            if viewer_state.frame and viewer_state.frame.valid then
+                player.opened = viewer_state.frame
+            end
+        end
+        return
+    end
+
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))
     if not matched_unit then return end
     PidCombinatorGui.destroy(event.player_index, matched_unit)
+end)
+
+script.on_event(defines.events.on_gui_closed, function(event)
+    if not event.element or not event.element.valid then return end
+    local unit_number = tonumber(event.element.name:match("^pid_combinator_frame_%d+_(%d+)$"))
+    if not unit_number then return end
+    local viewer_state = gui_state(event.player_index, unit_number)
+    if not viewer_state then return end
+    local pin_button = viewer_state.controls.pin_button
+    if pin_button and pin_button.valid and pin_button.toggled then
+        return
+    end
+    PidCombinatorGui.destroy(event.player_index, unit_number)
 end)
 
 script.on_event(defines.events.on_player_display_scale_changed, function (event)
