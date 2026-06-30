@@ -10,6 +10,7 @@ function SignalPicker.new(parent, title, config)
     signal_outer_container.add {
         type = "label",
         caption = title,
+        tooltip = config.title_tooltip,
         style = "bold_label",
     }
 
@@ -32,6 +33,7 @@ function SignalPicker.new(parent, title, config)
         type = "checkbox",
         name = config.r_checkbox_name,
         state = config.r_state,
+        tooltip = config.r_tooltip,
     }
 
     signal_table.add {
@@ -44,6 +46,7 @@ function SignalPicker.new(parent, title, config)
         type = "checkbox",
         name = config.g_checkbox_name,
         state = config.g_state,
+        tooltip = config.g_tooltip,
     }
 
     signal_table.add {
@@ -52,12 +55,40 @@ function SignalPicker.new(parent, title, config)
         style = "grey_label",
     }
 
-    signal_container.add {
+    local elem_container = signal_container.add {
+        type = "flow",
+        direction = "vertical",
+    }
+    elem_container.style.width = 40
+    elem_container.style.height = 40
+
+    elem_container.add {
         type = "choose-elem-button",
         name = config.choose_elem_button_name,
         elem_type = "signal",
         signal = config.signal,
     }
+
+    local overlay = elem_container.add {
+        type = "flow",
+        direction = "vertical",
+    }
+    overlay.style.top_margin = -40
+    overlay.style.width = 40
+    overlay.style.height = 40
+    overlay.style.horizontal_align = "right"
+    overlay.style.vertical_align = "bottom"
+    overlay.style.right_padding = 2
+    overlay.style.bottom_padding = 2
+    overlay.ignored_by_interaction = true
+
+    local value_label = overlay.add {
+        type = "label",
+        caption = "",
+        style = "count_label",
+    }
+
+    return { value_label = value_label }
 end
 
 return SignalPicker

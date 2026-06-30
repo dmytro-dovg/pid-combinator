@@ -46,6 +46,28 @@ local function update_status(viewers, status)
     end
 end
 
+local function format_value(n)
+    if n == 0 then return "0" end
+    local abs = math.abs(n)
+    if abs >= 1e9 then return string.format("%.1fG", n / 1e9) end
+    if abs >= 1e6 then return string.format("%.1fM", n / 1e6) end
+    if abs >= 1e4 then return string.format("%.1fk", n / 1e3) end
+    return tostring(math.floor(n))
+end
+
+local function set_caption(label, n)
+    if not label or not label.valid then return end
+    label.caption = n and format_value(n) or ""
+end
+
+local function update_value_labels(viewers, value)
+    for _, gui_state in pairs(viewers) do
+        set_caption(gui_state.controls.sp_value_label, value and value.sp)
+        set_caption(gui_state.controls.pv_value_label, value and value.pv)
+        set_caption(gui_state.controls.output_value_label, value and value.output)
+    end
+end
+
 local function gui_state(player_index, unit_number)
     local viewers = storage.pid_guis and storage.pid_guis[unit_number]
     return viewers and viewers[player_index]
@@ -219,6 +241,7 @@ function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
     if not viewers then return end
 
     update_status(viewers, status)
+    update_value_labels(viewers, value)
 
     if not data or not value then return end
 
@@ -383,6 +406,7 @@ function PidCombinatorGui.display(player, target)
 
     gui_state.graph.surface = gui_state.graph.surface or create_surface()
     gui_state.controls.graph = create_graph(gui_state, graph_frame, player.display_scale)
+    gui_state.controls.graph.tooltip = "Process Variable over time"
 
     local preview_frame = section_1.add {
         type = "frame",
@@ -415,12 +439,14 @@ function PidCombinatorGui.display(player, target)
     local tab_variables = tabbed_pane.add {
         type = "tab",
         caption = "Variables",
+        tooltip = "Pick signals and network filters for setpoint, process variable, and output",
     }
 
 
     local tab_tuning = tabbed_pane.add {
         type = "tab",
         caption = "Tuning",
+        tooltip = "Adjust proportional, integral, and derivative gains",
     }
 
     local tab_variables_content = tabbed_pane.add {
@@ -460,26 +486,37 @@ function PidCombinatorGui.display(player, target)
     -- tab_variables_content_right.style.horizontally_stretchable = true
 
 
+    local red_network_tooltip = "Toggle red network filter"
+    local green_network_tooltip = "Toggle green network filter"
+
     local sp_network = target:get_network("sp")
-    SignalPicker.new(tab_variables_content_left, "Setpoint", {
+    local sp_picker = SignalPicker.new(tab_variables_content_left, "Setpoint", {
         r_checkbox_name = "sp_r_checkbox_" .. unit_number,
         g_checkbox_name = "sp_g_checkbox_" .. unit_number,
         r_state = sp_network.red,
         g_state = sp_network.green,
+        r_tooltip = red_network_tooltip,
+        g_tooltip = green_network_tooltip,
+        title_tooltip = "Target value the controller drives the process variable toward",
         choose_elem_button_name = "sp_choose_elem_button_" .. unit_number,
         signal = target:get_signal("sp"),
     })
+    gui_state.controls.sp_value_label = sp_picker.value_label
 
 
     local pv_network = target:get_network("pv")
-    SignalPicker.new(tab_variables_content_left, "Process Variable", {
+    local pv_picker = SignalPicker.new(tab_variables_content_left, "Process Variable", {
         r_checkbox_name = "pv_r_checkbox_" .. unit_number,
         g_checkbox_name = "pv_g_checkbox_" .. unit_number,
         r_state = pv_network.red,
         g_state = pv_network.green,
+        r_tooltip = red_network_tooltip,
+        g_tooltip = green_network_tooltip,
+        title_tooltip = "Measured value of the system being controlled",
         choose_elem_button_name = "pv_choose_elem_button_" .. unit_number,
         signal = target:get_signal("pv"),
     })
+    gui_state.controls.pv_value_label = pv_picker.value_label
 
     local tab_variables_content_filler = tab_variables_content_left.add {
         type = "empty-widget",
@@ -488,14 +525,17 @@ function PidCombinatorGui.display(player, target)
     tab_variables_content_filler.style.horizontally_stretchable = true
 
     local output_network = target:get_network("output")
-    SignalPicker.new(tab_variables_content_left, "Output", {
+    local output_picker = SignalPicker.new(tab_variables_content_left, "Output", {
         r_checkbox_name = "output_r_checkbox_" .. unit_number,
         g_checkbox_name = "output_g_checkbox_" .. unit_number,
         r_state = output_network.red,
         g_state = output_network.green,
+        r_tooltip = red_network_tooltip,
+        g_tooltip = green_network_tooltip,
         choose_elem_button_name = "output_choose_elem_button_" .. unit_number,
         signal = target:get_signal("output"),
     })
+    gui_state.controls.output_value_label = output_picker.value_label
 
     -- local slider = tab_variables_content_left.add {
     --     type = "slider",
