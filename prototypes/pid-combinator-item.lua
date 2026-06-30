@@ -11,7 +11,8 @@ local recipe = {
     subgroup = "circuit-network",
     enabled = false,
     ingredients = {
-        {type = "item", name="arithmetic-combinator", amount = 3},
+        {type = "item", name = "arithmetic-combinator", amount = 3},
+        {type = "item", name = "decider-combinator", amount = 1},
         {type = "item", name = "electronic-circuit", amount = 5},
     },
     results = {{type="item", name="pid-combinator", amount=1}},
