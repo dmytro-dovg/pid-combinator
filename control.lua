@@ -237,6 +237,35 @@ script.on_event(defines.events.on_entity_cloned, function(event)
     setup_combinator(event.destination, carryover_settings)
 end)
 
+script.on_event(defines.events.on_player_setup_blueprint, function(event)
+    local mapping = event.mapping.get()
+    if not next(mapping) then return end
+
+    local blueprint = event.stack
+    if not (blueprint and blueprint.valid_for_read and blueprint.is_blueprint) then
+        local player = game.get_player(event.player_index)
+        if not player then return end
+        if player.blueprint_to_setup and player.blueprint_to_setup.valid_for_read then
+            blueprint = player.blueprint_to_setup
+        elseif player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.is_blueprint then
+            blueprint = player.cursor_stack
+        else
+            return
+        end
+    end
+
+    for blueprint_index, entity in pairs(mapping) do
+        if entity.valid and entity.name == "pid-combinator" then
+            local source = storage.pid and storage.pid[entity.unit_number]
+            if source then
+                local pid_settings = {}
+                PidSettings.copy(source, pid_settings)
+                blueprint.set_blueprint_entity_tag(blueprint_index, "pid_settings", pid_settings)
+            end
+        end
+    end
+end)
+
 local function process_pid(state, tick)
     local entity = state.entity
 
