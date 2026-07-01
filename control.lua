@@ -101,11 +101,43 @@ local function setup_combinator(entity, settings)
     end
 end
 
+-- Stash settings by position on the pre-mine side for fast replace, look them up on the build side.
+local function fast_replace_key(entity)
+    local p = entity.position
+    return entity.surface.index .. ":" .. p.x .. ":" .. p.y
+end
+
+local function stash_fast_replace(entity)
+    local state = storage.pid and storage.pid[entity.unit_number]
+    if not state then return end
+    storage.fast_replace_stash = storage.fast_replace_stash or {}
+    -- Drop entries from prior ticks that were mined but never rebuilt.
+    for key, stash in pairs(storage.fast_replace_stash) do
+        if stash.tick ~= game.tick then
+            storage.fast_replace_stash[key] = nil
+        end
+    end
+    local snapshot = {}
+    PidSettings.copy(state, snapshot)
+    storage.fast_replace_stash[fast_replace_key(entity)] = { settings = snapshot, tick = game.tick }
+end
+
+local function pop_fast_replace(entity)
+    if not storage.fast_replace_stash then return nil end
+    local key = fast_replace_key(entity)
+    local stash = storage.fast_replace_stash[key]
+    if not stash then return nil end
+    storage.fast_replace_stash[key] = nil
+    if stash.tick ~= game.tick then return nil end
+    return stash.settings
+end
+
 local function on_built(event)
     debugp("on_built")
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
-    local carryover_settings = event.tags and event.tags.pid_settings
+    local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
+    entity.operable = false
     setup_combinator(entity, carryover_settings)
     pid_gui.migrate_ghost_viewers(entity)
 end
@@ -113,6 +145,11 @@ end
 local function on_removed(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
+
+    if event.name == defines.events.on_pre_player_mined_item
+        or event.name == defines.events.on_robot_pre_mined then
+        stash_fast_replace(entity)
+    end
 
     local viewers = storage.pid_guis and storage.pid_guis[entity.unit_number]
     if viewers then
@@ -138,48 +175,65 @@ local function on_removed(event)
 
 end
 
-script.on_event(defines.events.on_entity_settings_pasted, function(event)
-    local src_number = event.source.unit_number
-    local dst_number = event.destination.unit_number
-    if not src_number or not dst_number then return end
-
-    local src_state = storage.pid[src_number]
-    local dst_state = storage.pid[dst_number]
-
-    if not src_state or not dst_state then return end
-
+local function on_open_input(event)
     local player = game.get_player(event.player_index)
-    if not player or not player.valid then return end
+    if not player then return end
 
-    if player.force ~= event.destination.force or
-       player.force ~= event.source.force then return end
+    -- Skip when the cursor is holding something. We don't want GUI opening in this case.
+    if player.cursor_stack and player.cursor_stack.valid_for_read then return end
+    if player.cursor_ghost then return end
 
-    PidSettings.copy(src_state, dst_state)
-end)
+    local entity = player.selected
+    if not entity or entity.name ~= "pid-combinator" then return end
 
-local function on_gui_open(event)
+    if player.force ~= entity.force then return nil end
+
+    local state = storage.pid and storage.pid[entity.unit_number]
+    if not state then return end
+
+    debugp("Opening " .. entity.name)
+    pid_gui.destroy(event.player_index, entity.unit_number)
+    pid_gui.display(player, SettingsTarget.live(entity.unit_number))
+end
+
+local function selected_pid_state(event)
+    local player = game.get_player(event.player_index)
+    if not player then return nil end
+    local entity = player.selected
+    if not entity or entity.name ~= "pid-combinator" then return nil end
+    if player.force ~= entity.force then return nil end
+    return storage.pid and storage.pid[entity.unit_number]
+end
+
+local function on_copy_input(event)
+    local state = selected_pid_state(event)
+    if not state then return end
+    storage.copy_sources = storage.copy_sources or {}
+    local snapshot = {}
+    PidSettings.copy(state, snapshot)
+    storage.copy_sources[event.player_index] = snapshot
+end
+
+local function on_paste_input(event)
+    local state = selected_pid_state(event)
+    if not state then return end
+    local snapshot = storage.copy_sources and storage.copy_sources[event.player_index]
+    if not snapshot then return end
+    PidSettings.copy(snapshot, state)
+end
+
+local function on_ghost_gui_opened(event)
     local entity = event.entity
-    if not entity then return end
+    if not entity or entity.type ~= "entity-ghost" or entity.ghost_name ~= "pid-combinator" then return end
 
     local player = game.get_player(event.player_index)
     if not player then return end
 
-    local target
-    if entity.name == "pid-combinator" then
-        local state = storage.pid and storage.pid[entity.unit_number]
-        if not state then return end
-        target = SettingsTarget.live(entity.unit_number)
-    elseif entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
-        target = SettingsTarget.ghost(entity)
-    else
-        return
-    end
-
     player.opened = nil
 
-    debugp("Opening " .. entity.name)
+    debugp("Opening ghost " .. entity.ghost_name)
     pid_gui.destroy(event.player_index, entity.unit_number)
-    pid_gui.display(player, target)
+    pid_gui.display(player, SettingsTarget.ghost(entity))
 end
 
 local on_built_events = {
@@ -204,7 +258,29 @@ for _, event in pairs(on_removed_events) do
     script.on_event(event, on_removed, {{filter="name", name="pid-combinator"}})
 end
 
-script.on_event(defines.events.on_gui_opened, on_gui_open)
+script.on_event("pid-combinator-open", on_open_input)
+script.on_event("pid-combinator-copy", on_copy_input)
+script.on_event("pid-combinator-paste", on_paste_input)
+script.on_event(defines.events.on_gui_opened, on_ghost_gui_opened)
+
+-- Blueprint built over entity
+script.on_event(defines.events.on_blueprint_settings_pasted, function(event)
+    local entity = event.entity
+    if not entity or not entity.valid then return end
+    if entity.name ~= "pid-combinator" then return end
+    local state = storage.pid and storage.pid[entity.unit_number]
+    if not state then return end
+
+    if event.player_index then
+        local player = game.get_player(event.player_index)
+        if not player or not player.valid then return end
+        if player.force ~= entity.force then return end
+    end
+
+    if event.tags and event.tags.pid_settings then
+        PidSettings.copy(event.tags.pid_settings, state)
+    end
+end)
 
 script.on_event(defines.events.on_player_removed, function(event)
     local player = game.get_player(event.player_index)

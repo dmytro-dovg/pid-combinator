@@ -51,6 +51,7 @@ local combinator = copy_prototype("arithmetic-combinator", "arithmetic-combinato
 combinator.icon = "__pid-combinator__/graphics/icons/pid-combinator.png"
 combinator.sprites = sprites
 combinator.corpse = "pid-combinator-remnants"
+combinator.fast_replaceable_group = "pid-combinator"
 combinator.plus_symbol_sprites = display_sprites
 combinator.minus_symbol_sprites = display_sprites
 combinator.multiply_symbol_sprites = display_sprites
