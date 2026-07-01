@@ -175,9 +175,10 @@ local function on_gui_open(event)
         return
     end
 
+    player.opened = nil
+
     debugp("Opening " .. entity.name)
     pid_gui.destroy(event.player_index, entity.unit_number)
-    player.opened = nil
     pid_gui.display(player, target)
 end
 
