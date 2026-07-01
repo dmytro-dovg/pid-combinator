@@ -24,7 +24,7 @@ function SignalPicker.new(parent, title, config)
     if config.title_tooltip then
         title_flow.add {
             type = "sprite",
-            sprite = "pid-combinator-info",
+            sprite = "info_no_border",
             tooltip = config.title_tooltip,
         }
     end
