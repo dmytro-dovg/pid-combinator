@@ -203,11 +203,16 @@ end
 local function on_built(event)
     debugp("on_built")
     local entity = event.entity
-    if not entity or entity.name ~= "pid-combinator" then return end
-    local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
-    entity.operable = false
-    setup_combinator(entity, carryover_settings)
-    pid_gui.migrate_ghost_viewers(entity)
+    if not entity then return end
+
+    if entity.name == "pid-combinator" then
+        local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
+        entity.operable = false
+        setup_combinator(entity, carryover_settings)
+        pid_gui.migrate_ghost_viewers(entity)
+    elseif entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
+        entity.operable = false
+    end
 end
 
 local function on_removed(event)
@@ -326,15 +331,23 @@ local function on_open_input(event)
     if player.cursor_ghost then return end
 
     local entity = player.selected
-    if not entity or entity.name ~= "pid-combinator" then return end
+    if not entity then return end
     if player.force ~= entity.force then return end
 
-    local state = storage.pid and storage.pid[entity.unit_number]
-    if not state then return end
+    local target
+    if entity.name == "pid-combinator" then
+        local state = storage.pid and storage.pid[entity.unit_number]
+        if not state then return end
+        target = SettingsTarget.live(entity.unit_number)
+    elseif entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
+        target = SettingsTarget.ghost(entity)
+    else
+        return
+    end
 
     debugp("Opening " .. entity.name)
     pid_gui.destroy(event.player_index, entity.unit_number)
-    pid_gui.display(player, SettingsTarget.live(entity.unit_number))
+    pid_gui.display(player, target)
 end
 
 local function selected_pid_state(event)
@@ -361,24 +374,6 @@ local function on_paste_input(event)
     local snapshot = storage.copy_sources and storage.copy_sources[event.player_index]
     if not snapshot then return end
     PidSettings.copy(snapshot, state)
-end
-
--- ============================================================================
--- GUI handlers (ghost fallback)
--- ============================================================================
-
-local function on_ghost_gui_opened(event)
-    local entity = event.entity
-    if not entity or entity.type ~= "entity-ghost" or entity.ghost_name ~= "pid-combinator" then return end
-
-    local player = game.get_player(event.player_index)
-    if not player then return end
-
-    player.opened = nil
-
-    debugp("Opening ghost " .. entity.ghost_name)
-    pid_gui.destroy(event.player_index, entity.unit_number)
-    pid_gui.display(player, SettingsTarget.ghost(entity))
 end
 
 -- ============================================================================
@@ -530,6 +525,10 @@ end
 -- ============================================================================
 
 local pid_filter = {{filter = "name", name = "pid-combinator"}}
+local built_filter = {
+    {filter = "name", name = "pid-combinator"},
+    {filter = "ghost_name", name = "pid-combinator", mode = "or"},
+}
 
 local on_built_events = {
     defines.events.on_built_entity,
@@ -546,7 +545,7 @@ local on_removed_events = {
 }
 
 for _, event in pairs(on_built_events) do
-    script.on_event(event, on_built, pid_filter)
+    script.on_event(event, on_built, built_filter)
 end
 
 for _, event in pairs(on_removed_events) do
@@ -558,7 +557,6 @@ script.on_event(defines.events.on_entity_cloned, on_entity_cloned)
 script.on_event(defines.events.on_undo_applied, on_undo_applied)
 script.on_event(defines.events.on_redo_applied, on_redo_applied)
 script.on_event(defines.events.on_player_removed, on_player_removed)
-script.on_event(defines.events.on_gui_opened, on_ghost_gui_opened)
 script.on_event(defines.events.on_blueprint_settings_pasted, on_blueprint_settings_pasted)
 script.on_event(defines.events.on_player_setup_blueprint, on_player_setup_blueprint)
 script.on_event(defines.events.on_tick, on_tick)
