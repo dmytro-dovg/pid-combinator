@@ -560,7 +560,21 @@ function PidCombinatorGui.display(player, target)
     }
     tab_tuning_content_left.style.horizontally_stretchable = true
 
-    gui_state.kp_views = ValueSlider.new(tab_tuning_content_left, {"gui-pid-combinator.gain-proportional"}, {
+    local tuning_table = tab_tuning_content_left.add {
+        type = "table",
+        column_count = 2,
+        vertical_centering = true,
+    }
+    tuning_table.style.right_cell_padding = 8
+
+    -- Proportional
+    tuning_table.add {
+        type = "label",
+        caption = {"gui-pid-combinator.gain-proportional"},
+        style = "bold_label",
+    }
+
+    gui_state.kp_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_kp_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -573,7 +587,14 @@ function PidCombinatorGui.display(player, target)
         },
     })
 
-    gui_state.ki_views = ValueSlider.new(tab_tuning_content_left, {"gui-pid-combinator.gain-integral"}, {
+    -- Integral
+    tuning_table.add {
+        type = "label",
+        caption = {"gui-pid-combinator.gain-integral"},
+        style = "bold_label",
+    }
+
+    gui_state.ki_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_ki_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -586,7 +607,14 @@ function PidCombinatorGui.display(player, target)
         },
     })
 
-    gui_state.kd_views = ValueSlider.new(tab_tuning_content_left, {"gui-pid-combinator.gain-derivative"}, {
+    -- Derivative
+    tuning_table.add {
+        type = "label",
+        caption = {"gui-pid-combinator.gain-derivative"},
+        style = "bold_label",
+    }
+
+    gui_state.kd_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_kd_slider_" .. unit_number,
             minimum_value = 0.0,

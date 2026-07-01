@@ -1,19 +1,12 @@
 local ValueSlider = {}
 
-function ValueSlider.new(parent, title, config)
+function ValueSlider.new(parent, config)
     local container = parent.add {
         type = "flow",
         direction = "horizontal",
     }
     container.style.horizontal_spacing = 12
     container.style.vertical_align = "center"
-
-    local label = container.add {
-        type = "label",
-        caption = title,
-        style = "bold_label",
-    }
-    label.style.width = 16
 
     config.slider.type = "slider"
     local slider = container.add(config.slider)
