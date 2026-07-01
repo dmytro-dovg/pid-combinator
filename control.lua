@@ -105,39 +105,95 @@ local function setup_combinator(entity, settings)
     end
 end
 
--- ============================================================================
--- Fast-replace stash
--- Stash settings by position on the pre-mine side for fast replace, look them up on the build side.
--- ============================================================================
-
-local function fast_replace_key(entity)
-    local p = entity.position
-    return entity.surface.index .. ":" .. p.x .. ":" .. p.y
+local function position_key(surface_index, position)
+    return surface_index .. ":" .. position.x .. ":" .. position.y
 end
 
-local function stash_fast_replace(entity)
-    local state = storage.pid and storage.pid[entity.unit_number]
-    if not state then return end
+-- ============================================================================
+-- Fast-replace stash
+-- ============================================================================
+
+local function stash_fast_replace(entity, snapshot)
     storage.fast_replace_stash = storage.fast_replace_stash or {}
-    -- Drop entries from prior ticks that were mined but never rebuilt.
     for key, stash in pairs(storage.fast_replace_stash) do
         if stash.tick ~= game.tick then
             storage.fast_replace_stash[key] = nil
         end
     end
-    local snapshot = {}
-    PidSettings.copy(state, snapshot)
-    storage.fast_replace_stash[fast_replace_key(entity)] = { settings = snapshot, tick = game.tick }
+    storage.fast_replace_stash[position_key(entity.surface.index, entity.position)] =
+        { settings = snapshot, tick = game.tick }
 end
 
 local function pop_fast_replace(entity)
     if not storage.fast_replace_stash then return nil end
-    local key = fast_replace_key(entity)
+    local key = position_key(entity.surface.index, entity.position)
     local stash = storage.fast_replace_stash[key]
     if not stash then return nil end
     storage.fast_replace_stash[key] = nil
     if stash.tick ~= game.tick then return nil end
     return stash.settings
+end
+
+-- ============================================================================
+-- Undo / redo
+-- undo_cache: written on mine, consumed when undo-of-a-mine restores a ghost.
+-- redo_cache: written on any removal, consumed when redo-of-a-build restores
+-- the entity that was removed by undo.
+-- on_undo_applied / on_redo_applied fire BEFORE the game applies the action,
+-- so restoration is deferred one tick.
+-- ============================================================================
+
+local UNDO_REDO_MAX_AGE = 60 * 60 * 60
+
+local function cache_put(cache, entity, snapshot)
+    for key, cached in pairs(cache) do
+        if game.tick - cached.tick > UNDO_REDO_MAX_AGE then
+            cache[key] = nil
+        end
+    end
+    cache[position_key(entity.surface.index, entity.position)] =
+        { settings = snapshot, tick = game.tick }
+end
+
+local function cache_pop(cache, surface_index, position)
+    if not cache then return nil end
+    local key = position_key(surface_index, position)
+    local cached = cache[key]
+    if not cached then return nil end
+    cache[key] = nil
+    return cached.settings
+end
+
+local function remember_for_undo(entity, snapshot)
+    storage.undo_cache = storage.undo_cache or {}
+    cache_put(storage.undo_cache, entity, snapshot)
+end
+
+local function remember_for_redo(entity, snapshot)
+    storage.redo_cache = storage.redo_cache or {}
+    cache_put(storage.redo_cache, entity, snapshot)
+end
+
+local function apply_undo_redo(surface_index, position, settings)
+    local surface = game.get_surface(surface_index)
+    if not surface or not surface.valid then return end
+
+    for _, ghost in ipairs(surface.find_entities_filtered { position = position, ghost_name = "pid-combinator" }) do
+        if ghost.valid then
+            local tags = ghost.tags or {}
+            tags.pid_settings = settings
+            ghost.tags = tags
+        end
+    end
+
+    for _, entity in ipairs(surface.find_entities_filtered { position = position, name = "pid-combinator" }) do
+        if entity.valid then
+            local state = storage.pid and storage.pid[entity.unit_number]
+            if state then
+                PidSettings.copy(settings, state)
+            end
+        end
+    end
 end
 
 -- ============================================================================
@@ -158,9 +214,16 @@ local function on_removed(event)
     local entity = event.entity
     if not entity or entity.name ~= "pid-combinator" then return end
 
-    if event.name == defines.events.on_pre_player_mined_item
-        or event.name == defines.events.on_robot_pre_mined then
-        stash_fast_replace(entity)
+    local state = storage.pid and storage.pid[entity.unit_number]
+    if state then
+        local snapshot = {}
+        PidSettings.copy(state, snapshot)
+        remember_for_redo(entity, snapshot)
+        if event.name == defines.events.on_pre_player_mined_item
+            or event.name == defines.events.on_robot_pre_mined then
+            stash_fast_replace(entity, snapshot)
+            remember_for_undo(entity, snapshot)
+        end
     end
 
     local viewers = storage.pid_guis and storage.pid_guis[entity.unit_number]
@@ -174,7 +237,6 @@ local function on_removed(event)
         end
     end
 
-    local state = storage.pid and storage.pid[entity.unit_number]
     if state and state.output_entity and state.output_entity.valid then
         debugp("Destroyed hidden " .. serpent.dump(state.output_entity))
         state.output_entity.destroy()
@@ -210,6 +272,35 @@ local function on_entity_cloned(event)
     local src = event.source
     local carryover_settings = src and src.unit_number and storage.pid and storage.pid[src.unit_number]
     setup_combinator(dst, carryover_settings)
+end
+
+local function schedule_undo_redo(surface_index, position, settings)
+    storage.pending_undo_redo = storage.pending_undo_redo or {}
+    storage.pending_undo_redo[#storage.pending_undo_redo + 1] = {
+        surface_index = surface_index,
+        position = { x = position.x, y = position.y },
+        settings = settings,
+        due_tick = game.tick + 1,
+    }
+end
+
+local function collect_undo_redo(actions, cache)
+    for _, action in ipairs(actions or {}) do
+        if action.target and action.target.name == "pid-combinator" and action.surface_index then
+            local settings = cache_pop(cache, action.surface_index, action.target.position)
+            if settings then
+                schedule_undo_redo(action.surface_index, action.target.position, settings)
+            end
+        end
+    end
+end
+
+local function on_undo_applied(event)
+    collect_undo_redo(event.actions, storage.undo_cache)
+end
+
+local function on_redo_applied(event)
+    collect_undo_redo(event.actions, storage.redo_cache)
 end
 
 -- ============================================================================
@@ -408,7 +499,21 @@ local function process_pid(state, tick)
     return { output = output, pv = pv, sp = sp }
 end
 
+local function drain_pending_undo_redo(tick)
+    if not storage.pending_undo_redo or #storage.pending_undo_redo == 0 then return end
+    local remaining = {}
+    for _, pending in ipairs(storage.pending_undo_redo) do
+        if tick >= pending.due_tick then
+            apply_undo_redo(pending.surface_index, pending.position, pending.settings)
+        else
+            remaining[#remaining + 1] = pending
+        end
+    end
+    storage.pending_undo_redo = remaining
+end
+
 local function on_tick(event)
+    drain_pending_undo_redo(event.tick)
     if not storage.pid then return end
     for unit_number, state in pairs(storage.pid) do
         if not state.entity.valid or not state.output_entity.valid then
@@ -450,6 +555,8 @@ end
 
 script.on_event(defines.events.on_post_entity_died, on_post_entity_died, {{filter = "type", type = "arithmetic-combinator"}})
 script.on_event(defines.events.on_entity_cloned, on_entity_cloned)
+script.on_event(defines.events.on_undo_applied, on_undo_applied)
+script.on_event(defines.events.on_redo_applied, on_redo_applied)
 script.on_event(defines.events.on_player_removed, on_player_removed)
 script.on_event(defines.events.on_gui_opened, on_ghost_gui_opened)
 script.on_event(defines.events.on_blueprint_settings_pasted, on_blueprint_settings_pasted)
