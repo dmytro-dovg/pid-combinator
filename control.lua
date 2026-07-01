@@ -18,6 +18,10 @@ local connector_id = {
     },
 }
 
+-- ============================================================================
+-- Entity functions
+-- ============================================================================
+
 local function write_output(state, value)
     local cb = state.output_entity.get_or_create_control_behavior()
     local section = cb.get_section(1)
@@ -101,7 +105,11 @@ local function setup_combinator(entity, settings)
     end
 end
 
+-- ============================================================================
+-- Fast-replace stash
 -- Stash settings by position on the pre-mine side for fast replace, look them up on the build side.
+-- ============================================================================
+
 local function fast_replace_key(entity)
     local p = entity.position
     return entity.surface.index .. ":" .. p.x .. ":" .. p.y
@@ -131,6 +139,10 @@ local function pop_fast_replace(entity)
     if stash.tick ~= game.tick then return nil end
     return stash.settings
 end
+
+-- ============================================================================
+-- Lifecycle handlers
+-- ============================================================================
 
 local function on_built(event)
     debugp("on_built")
@@ -172,21 +184,59 @@ local function on_removed(event)
     if storage.pid then
         storage.pid[entity.unit_number] = nil
     end
-
 end
+
+local function on_post_entity_died(event)
+    local unit_number = event.unit_number
+    local ghost = event.ghost
+    if not unit_number or event.prototype and event.prototype.name ~= "pid-combinator" then return end
+
+    -- Carry over settings to the replacement entity via the ghost's tags.
+    if ghost then
+        local source = storage.pid[unit_number]
+        local pid_settings = {}
+        PidSettings.copy(source, pid_settings)
+        event.ghost.tags = { pid_settings = pid_settings }
+    end
+
+    if storage.pid then
+        storage.pid[unit_number] = nil
+    end
+end
+
+local function on_entity_cloned(event)
+    local dst = event.destination
+    if not dst or dst.name ~= "pid-combinator" then return end
+    local src = event.source
+    local carryover_settings = src and src.unit_number and storage.pid and storage.pid[src.unit_number]
+    setup_combinator(dst, carryover_settings)
+end
+
+-- ============================================================================
+-- Player handlers
+-- ============================================================================
+
+local function on_player_removed(event)
+    local player = game.get_player(event.player_index)
+    if not player then return end
+    pid_gui.cleanup(player)
+end
+
+-- ============================================================================
+-- Interaction handlers
+-- ============================================================================
 
 local function on_open_input(event)
     local player = game.get_player(event.player_index)
     if not player then return end
 
-    -- Skip when the cursor is holding something. We don't want GUI opening in this case.
+    -- Skip when the cursor is holding something (wire, blueprint, etc.).
     if player.cursor_stack and player.cursor_stack.valid_for_read then return end
     if player.cursor_ghost then return end
 
     local entity = player.selected
     if not entity or entity.name ~= "pid-combinator" then return end
-
-    if player.force ~= entity.force then return nil end
+    if player.force ~= entity.force then return end
 
     local state = storage.pid and storage.pid[entity.unit_number]
     if not state then return end
@@ -222,6 +272,10 @@ local function on_paste_input(event)
     PidSettings.copy(snapshot, state)
 end
 
+-- ============================================================================
+-- GUI handlers (ghost fallback)
+-- ============================================================================
+
 local function on_ghost_gui_opened(event)
     local entity = event.entity
     if not entity or entity.type ~= "entity-ghost" or entity.ghost_name ~= "pid-combinator" then return end
@@ -236,35 +290,11 @@ local function on_ghost_gui_opened(event)
     pid_gui.display(player, SettingsTarget.ghost(entity))
 end
 
-local on_built_events = {
-    defines.events.on_built_entity,
-    defines.events.on_robot_built_entity,
-    defines.events.script_raised_built,
-    defines.events.script_raised_revive,
-}
+-- ============================================================================
+-- Blueprint handlers
+-- ============================================================================
 
-local on_removed_events = {
-    defines.events.on_entity_died,
-    defines.events.on_pre_player_mined_item,
-    defines.events.on_robot_pre_mined,
-    defines.events.script_raised_destroy
-}
-
-for _, event in pairs(on_built_events) do
-    script.on_event(event, on_built, {{filter="name", name="pid-combinator"}})
-end
-
-for _, event in pairs(on_removed_events) do
-    script.on_event(event, on_removed, {{filter="name", name="pid-combinator"}})
-end
-
-script.on_event("pid-combinator-open", on_open_input)
-script.on_event("pid-combinator-copy", on_copy_input)
-script.on_event("pid-combinator-paste", on_paste_input)
-script.on_event(defines.events.on_gui_opened, on_ghost_gui_opened)
-
--- Blueprint built over entity
-script.on_event(defines.events.on_blueprint_settings_pasted, function(event)
+local function on_blueprint_settings_pasted(event)
     local entity = event.entity
     if not entity or not entity.valid then return end
     if entity.name ~= "pid-combinator" then return end
@@ -280,42 +310,9 @@ script.on_event(defines.events.on_blueprint_settings_pasted, function(event)
     if event.tags and event.tags.pid_settings then
         PidSettings.copy(event.tags.pid_settings, state)
     end
-end)
+end
 
-script.on_event(defines.events.on_player_removed, function(event)
-    local player = game.get_player(event.player_index)
-    if not player then return end
-
-    pid_gui.cleanup(player)
-end)
-
-script.on_event(defines.events.on_post_entity_died, function(event)
-    local unit_number = event.unit_number
-    local ghost = event.ghost
-    if not unit_number or event.prototype and event.prototype.name ~= "pid-combinator"  then return end
-
-    -- Copy setting to carry over to new entity via a ghost
-    if ghost then
-        local source = storage.pid[unit_number]
-
-        local pid_settings = {}
-        PidSettings.copy(source, pid_settings)
-
-        event.ghost.tags = { pid_settings = pid_settings }
-    end
-
-    -- Cleaning up the state of dead enity
-    if storage.pid then
-        storage.pid[unit_number] = nil
-    end
-end, {{filter="type", type="arithmetic-combinator"}})
-
-script.on_event(defines.events.on_entity_cloned, function(event)
-    local carryover_settings = event.source.unit_number and storage.pid[event.source.unit_number]
-    setup_combinator(event.destination, carryover_settings)
-end)
-
-script.on_event(defines.events.on_player_setup_blueprint, function(event)
+local function on_player_setup_blueprint(event)
     local mapping = event.mapping.get()
     if not next(mapping) then return end
 
@@ -342,7 +339,11 @@ script.on_event(defines.events.on_player_setup_blueprint, function(event)
             end
         end
     end
-end)
+end
+
+-- ============================================================================
+-- PID processing
+-- ============================================================================
 
 local function process_pid(state, tick)
     local entity = state.entity
@@ -403,12 +404,11 @@ local function process_pid(state, tick)
         + ki * state.integral
         + kd * derivative
 
-
     write_output(state, output)
     return { output = output, pv = pv, sp = sp }
 end
 
-script.on_event(defines.events.on_tick, function(event)
+local function on_tick(event)
     if not storage.pid then return end
     for unit_number, state in pairs(storage.pid) do
         if not state.entity.valid or not state.output_entity.valid then
@@ -418,4 +418,44 @@ script.on_event(defines.events.on_tick, function(event)
             pid_gui.on_tick(unit_number, state.entity.status, state.graph_data, event.tick, value)
         end
     end
-end)
+end
+
+-- ============================================================================
+-- Events
+-- ============================================================================
+
+local pid_filter = {{filter = "name", name = "pid-combinator"}}
+
+local on_built_events = {
+    defines.events.on_built_entity,
+    defines.events.on_robot_built_entity,
+    defines.events.script_raised_built,
+    defines.events.script_raised_revive,
+}
+
+local on_removed_events = {
+    defines.events.on_entity_died,
+    defines.events.on_pre_player_mined_item,
+    defines.events.on_robot_pre_mined,
+    defines.events.script_raised_destroy,
+}
+
+for _, event in pairs(on_built_events) do
+    script.on_event(event, on_built, pid_filter)
+end
+
+for _, event in pairs(on_removed_events) do
+    script.on_event(event, on_removed, pid_filter)
+end
+
+script.on_event(defines.events.on_post_entity_died, on_post_entity_died, {{filter = "type", type = "arithmetic-combinator"}})
+script.on_event(defines.events.on_entity_cloned, on_entity_cloned)
+script.on_event(defines.events.on_player_removed, on_player_removed)
+script.on_event(defines.events.on_gui_opened, on_ghost_gui_opened)
+script.on_event(defines.events.on_blueprint_settings_pasted, on_blueprint_settings_pasted)
+script.on_event(defines.events.on_player_setup_blueprint, on_player_setup_blueprint)
+script.on_event(defines.events.on_tick, on_tick)
+
+script.on_event("pid-combinator-open", on_open_input)
+script.on_event("pid-combinator-copy", on_copy_input)
+script.on_event("pid-combinator-paste", on_paste_input)
