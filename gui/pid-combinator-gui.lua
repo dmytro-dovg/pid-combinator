@@ -627,6 +627,26 @@ function PidCombinatorGui.display(player, target)
         },
     })
 
+    -- Integral clamp (anti-windup)
+    tuning_table.add {
+        type = "label",
+        caption = {"gui-pid-combinator.integral-clamp"},
+        tooltip = {"gui-pid-combinator.integral-clamp-tooltip"},
+        style = "bold_label",
+    }
+
+    local max_integral_field = tuning_table.add {
+        type = "textfield",
+        name = "pid_combinator_max_integral_textfield_" .. unit_number,
+        text = tostring(target:get_max_integral()),
+        numeric = true,
+        allow_decimal = false,
+        allow_negative = false,
+        tooltip = {"gui-pid-combinator.integral-clamp-tooltip"},
+    }
+    max_integral_field.style.width = 80
+    gui_state.controls.max_integral_field = max_integral_field
+
     player.opened = frame
 end
 
@@ -663,6 +683,17 @@ script.on_event(defines.events.on_gui_value_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(event)
+    local mi_unit = tonumber(event.element.name:match("^pid_combinator_max_integral_textfield_(%d+)$"))
+    if mi_unit then
+        local gui_state = gui_state(event.player_index, mi_unit)
+        if not gui_state or not gui_state.target then return end
+        local target = SettingsTarget.resolve(gui_state.target)
+        if not target or not target:valid() then return end
+        local value = tonumber(event.element.text)
+        if value then target:set_max_integral(value) end
+        return
+    end
+
     local match_component, matched_unit = event.element.name:match("^pid_combinator_k([a-z])_textfield_([0-9]+)")
     local unit_number = tonumber(matched_unit)
     if not unit_number then return end

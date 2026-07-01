@@ -7,7 +7,7 @@ function PidSettings.defaults()
         ki = 0.0,
         kd = 0.0,
         -- anti-windup
-        max_integral = 200,
+        max_integral = 60,
         signals = {
             pv = { name = "signal-V", type = "virtual" },
             sp = { name = "signal-S", type = "virtual" },

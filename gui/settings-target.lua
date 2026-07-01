@@ -37,6 +37,16 @@ function Live:set_k(component, value)
     if state then state["k" .. component] = value end
 end
 
+function Live:get_max_integral()
+    local state = self:_state()
+    return state and state.max_integral
+end
+
+function Live:set_max_integral(value)
+    local state = self:_state()
+    if state then state.max_integral = value end
+end
+
 function Live:get_signal(role)
     local state = self:_state()
     return state and state.signals[role]
@@ -110,6 +120,14 @@ end
 
 function Ghost:set_k(component, value)
     self:_write(function(settings) settings["k" .. component] = value end)
+end
+
+function Ghost:get_max_integral()
+    return self:_read().max_integral
+end
+
+function Ghost:set_max_integral(value)
+    self:_write(function(settings) settings.max_integral = value end)
 end
 
 function Ghost:get_signal(role)
