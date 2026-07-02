@@ -226,7 +226,8 @@ local function on_removed(event)
         PidSettings.copy(state, snapshot)
         remember_for_redo(entity, snapshot)
         if event.name == defines.events.on_pre_player_mined_item
-            or event.name == defines.events.on_robot_pre_mined then
+            or event.name == defines.events.on_robot_pre_mined
+            or event.name == defines.events.on_space_platform_pre_mined then
             stash_fast_replace(entity, snapshot)
             remember_for_undo(entity, snapshot)
         end
@@ -569,6 +570,7 @@ local built_filter = {
 local on_built_events = {
     defines.events.on_built_entity,
     defines.events.on_robot_built_entity,
+    defines.events.on_space_platform_built_entity,
     defines.events.script_raised_built,
     defines.events.script_raised_revive,
 }
@@ -577,6 +579,7 @@ local on_removed_events = {
     defines.events.on_entity_died,
     defines.events.on_pre_player_mined_item,
     defines.events.on_robot_pre_mined,
+    defines.events.on_space_platform_pre_mined,
     defines.events.script_raised_destroy,
 }
 
