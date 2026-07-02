@@ -215,6 +215,18 @@ local function on_built(event)
     end
 end
 
+local function close_viewers(unit_number)
+    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
+    if not viewers then return end
+    local player_indices = {}
+    for player_index, _ in pairs(viewers) do
+        player_indices[#player_indices + 1] = player_index
+    end
+    for _, player_index in ipairs(player_indices) do
+        pid_gui.destroy(player_index, unit_number)
+    end
+end
+
 local function on_removed(event)
     local entity = event.entity
     if not entity or not entity.valid then return end
@@ -234,6 +246,11 @@ local function on_removed(event)
         return
     end
 
+    if entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
+        close_viewers(entity.unit_number)
+        return
+    end
+
     if entity.name ~= "pid-combinator" then return end
 
     local state = storage.pid and storage.pid[entity.unit_number]
@@ -249,16 +266,7 @@ local function on_removed(event)
         end
     end
 
-    local viewers = storage.pid_guis and storage.pid_guis[entity.unit_number]
-    if viewers then
-        local player_indices = {}
-        for player_index, _ in pairs(viewers) do
-            player_indices[#player_indices + 1] = player_index
-        end
-        for _, player_index in ipairs(player_indices) do
-            pid_gui.destroy(player_index, entity.unit_number)
-        end
-    end
+    close_viewers(entity.unit_number)
 
     if state and state.output_entity and state.output_entity.valid then
         debugp("Destroyed hidden " .. serpent.dump(state.output_entity))
@@ -588,6 +596,7 @@ local built_filter = {
 local removed_filter = {
     {filter = "name", name = "pid-combinator"},
     {filter = "name", name = "pid-combinator-output", mode = "or"},
+    {filter = "ghost_name", name = "pid-combinator", mode = "or"},
 }
 
 local on_built_events = {
