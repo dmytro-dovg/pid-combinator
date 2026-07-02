@@ -204,7 +204,7 @@ end
 local function on_built(event)
     debugp("on_built")
     local entity = event.entity
-    if not entity then return end
+    if not entity or not entity.valid then return end
 
     if entity.name == "pid-combinator" then
         local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
@@ -218,7 +218,7 @@ end
 
 local function on_removed(event)
     local entity = event.entity
-    if not entity or entity.name ~= "pid-combinator" then return end
+    if not entity or not entity.valid or entity.name ~= "pid-combinator" then return end
 
     local state = storage.pid and storage.pid[entity.unit_number]
     if state then
@@ -337,7 +337,7 @@ local function on_open_input(event)
     if player.cursor_ghost then return end
 
     local entity = player.selected
-    if not entity then return end
+    if not entity or not entity.valid then return end
     if player.force ~= entity.force then return end
 
     local target
@@ -360,7 +360,7 @@ local function selected_pid_state(event)
     local player = game.get_player(event.player_index)
     if not player then return nil end
     local entity = player.selected
-    if not entity or entity.name ~= "pid-combinator" then return nil end
+    if not entity or not entity.valid or entity.name ~= "pid-combinator" then return nil end
     if player.force ~= entity.force then return nil end
     return storage.pid and storage.pid[entity.unit_number]
 end
