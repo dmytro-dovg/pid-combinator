@@ -73,6 +73,17 @@ local function gui_state(player_index, unit_number)
     return viewers and viewers[player_index]
 end
 
+-- Sync GUI for all viewers
+local function broadcast(unit_number, actor_index, apply)
+    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
+    if not viewers then return end
+    for player_index, viewer in pairs(viewers) do
+        if player_index ~= actor_index and viewer.controls then
+            apply(viewer.controls)
+        end
+    end
+end
+
 function PidCombinatorGui.cleanup(player)
     if not storage.pid_guis then return end
     local unit_numbers = {}
@@ -506,7 +517,7 @@ function PidCombinatorGui.display(player, target)
         signal = target:get_signal("sp"),
     })
     gui_state.controls.sp_value_label = sp_picker.value_label
-
+    gui_state.controls.sp_picker = sp_picker
 
     local pv_network = target:get_network("pv")
     local pv_picker = SignalPicker.new(tab_variables_content_left, {"gui-pid-combinator.process-variable"}, {
@@ -521,6 +532,7 @@ function PidCombinatorGui.display(player, target)
         signal = target:get_signal("pv"),
     })
     gui_state.controls.pv_value_label = pv_picker.value_label
+    gui_state.controls.pv_picker = pv_picker
 
     local tab_variables_content_filler = tab_variables_content_left.add {
         type = "empty-widget",
@@ -540,6 +552,7 @@ function PidCombinatorGui.display(player, target)
         signal = target:get_signal("output"),
     })
     gui_state.controls.output_value_label = output_picker.value_label
+    gui_state.controls.output_picker = output_picker
 
     -- local slider = tab_variables_content_left.add {
     --     type = "slider",
@@ -575,7 +588,7 @@ function PidCombinatorGui.display(player, target)
         style = "bold_label",
     }
 
-    gui_state.kp_views = ValueSlider.new(tuning_table, {
+    gui_state.controls.kp_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_kp_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -595,7 +608,7 @@ function PidCombinatorGui.display(player, target)
         style = "bold_label",
     }
 
-    gui_state.ki_views = ValueSlider.new(tuning_table, {
+    gui_state.controls.ki_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_ki_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -615,7 +628,7 @@ function PidCombinatorGui.display(player, target)
         style = "bold_label",
     }
 
-    gui_state.kd_views = ValueSlider.new(tuning_table, {
+    gui_state.controls.kd_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_kd_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -665,13 +678,17 @@ script.on_event(defines.events.on_gui_value_changed, function(event)
     local string_value = tostring(value)
 
     target:set_k(match_component, value)
-    if match_component == 'p' then
-        gui_state.kp_views.textfield.text = string_value
-    elseif match_component == 'i' then
-        gui_state.ki_views.textfield.text = string_value
-    elseif match_component == 'd' then
-        gui_state.kd_views.textfield.text = string_value
+    local views_key = "k" .. match_component .. "_views"
+    local own_views = gui_state.controls[views_key]
+    if own_views and own_views.textfield and own_views.textfield.valid then
+        own_views.textfield.text = string_value
     end
+    broadcast(unit_number, event.player_index, function(controls)
+        local views = controls[views_key]
+        if not views then return end
+        if views.slider and views.slider.valid then views.slider.slider_value = value end
+        if views.textfield and views.textfield.valid then views.textfield.text = string_value end
+    end)
 
     local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
     if not matched_unit then return end
@@ -691,7 +708,14 @@ script.on_event(defines.events.on_gui_text_changed, function(event)
         local target = SettingsTarget.resolve(gui_state.target)
         if not target or not target:valid() then return end
         local value = tonumber(event.element.text)
-        if value then target:set_max_integral(value) end
+        if value then
+            target:set_max_integral(value)
+            local text = event.element.text
+            broadcast(mi_unit, event.player_index, function(controls)
+                local field = controls.max_integral_field
+                if field and field.valid then field.text = text end
+            end)
+        end
         return
     end
 
@@ -706,13 +730,18 @@ script.on_event(defines.events.on_gui_text_changed, function(event)
     if not target or not target:valid() then return end
 
     target:set_k(match_component, value)
-    if match_component == 'p' then
-        gui_state.kp_views.slider.slider_value = value
-    elseif match_component == 'i' then
-        gui_state.ki_views.slider.slider_value = value
-    elseif match_component == 'd' then
-        gui_state.kd_views.slider.slider_value = value
+    local views_key = "k" .. match_component .. "_views"
+    local own_views = gui_state.controls[views_key]
+    if own_views and own_views.slider and own_views.slider.valid then
+        own_views.slider.slider_value = value
     end
+    local string_value = event.element.text
+    broadcast(unit_number, event.player_index, function(controls)
+        local views = controls[views_key]
+        if not views then return end
+        if views.slider and views.slider.valid then views.slider.slider_value = value end
+        if views.textfield and views.textfield.valid then views.textfield.text = string_value end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_elem_changed, function(event)
@@ -725,7 +754,15 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
     local target = SettingsTarget.resolve(gui_state.target)
     if not target or not target:valid() then return end
 
-    target:set_signal(match_component, event.element.elem_value)
+    local value = event.element.elem_value
+    target:set_signal(match_component, value)
+    local picker_key = match_component .. "_picker"
+    broadcast(unit_number, event.player_index, function(controls)
+        local picker = controls[picker_key]
+        if picker and picker.elem_button and picker.elem_button.valid then
+            picker.elem_button.elem_value = value
+        end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_checked_state_changed, function(event)
@@ -742,6 +779,15 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(event)
     local wire_type = matched_wire_type == "r" and "red" or "green"
 
     target:set_network(match_component, wire_type, value)
+
+    local picker_key = match_component .. "_picker"
+    local checkbox_key = matched_wire_type == "r" and "r_checkbox" or "g_checkbox"
+    broadcast(unit_number, event.player_index, function(controls)
+        local picker = controls[picker_key]
+        if picker and picker[checkbox_key] and picker[checkbox_key].valid then
+            picker[checkbox_key].state = value
+        end
+    end)
 
     -- Output is handled differently.
     -- We control it by disconnecting output constant combinator from PID combinator outputs.

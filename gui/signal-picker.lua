@@ -44,7 +44,7 @@ function SignalPicker.new(parent, title, config)
     signal_table.style.horizontal_spacing = 8
     signal_table.style.vertical_spacing = 0
 
-    signal_table.add {
+    local r_checkbox = signal_table.add {
         type = "checkbox",
         name = config.r_checkbox_name,
         state = config.r_state,
@@ -57,7 +57,7 @@ function SignalPicker.new(parent, title, config)
         style = "grey_label",
     }
 
-    signal_table.add {
+    local g_checkbox = signal_table.add {
         type = "checkbox",
         name = config.g_checkbox_name,
         state = config.g_state,
@@ -77,7 +77,7 @@ function SignalPicker.new(parent, title, config)
     elem_container.style.width = 40
     elem_container.style.height = 40
 
-    elem_container.add {
+    local elem_button = elem_container.add {
         type = "choose-elem-button",
         name = config.choose_elem_button_name,
         elem_type = "signal",
@@ -103,7 +103,12 @@ function SignalPicker.new(parent, title, config)
         style = "count_label",
     }
 
-    return { value_label = value_label }
+    return {
+        value_label = value_label,
+        r_checkbox = r_checkbox,
+        g_checkbox = g_checkbox,
+        elem_button = elem_button,
+    }
 end
 
 return SignalPicker
