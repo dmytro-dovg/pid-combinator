@@ -72,6 +72,7 @@ local function create_output_for(entity)
         create_build_effect_smoke = false,
     }
     hidden.destructible = false
+    hidden.operable = false
     for _, wire_type in ipairs({"red", "green"}) do
         local pid_combinator_connector = entity.get_wire_connector(connector_id.output[wire_type], true)
         local output_combinator_connector = hidden.get_wire_connector(connector_id.input[wire_type], true)
@@ -381,6 +382,36 @@ local function on_paste_input(event)
     PidSettings.copy(snapshot, state)
 end
 
+-- Fallback for editor mode: `operable = false` and `not-selectable-in-game`
+-- are both bypassed there, so the vanilla arithmetic combinator GUI and the
+-- hidden constant combinator GUI can still be opened.
+local function on_gui_opened_fallback(event)
+    local entity = event.entity
+    if not entity or not entity.valid then return end
+    local player = game.get_player(event.player_index)
+    if not player then return end
+
+    if entity.name == "pid-combinator-output" then
+        player.opened = nil
+        return
+    end
+
+    if entity.name == "pid-combinator" then
+        local state = storage.pid and storage.pid[entity.unit_number]
+        if not state then return end
+        player.opened = nil
+        pid_gui.destroy(event.player_index, entity.unit_number)
+        pid_gui.display(player, SettingsTarget.live(entity.unit_number))
+        return
+    end
+
+    if entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
+        player.opened = nil
+        pid_gui.destroy(event.player_index, entity.unit_number)
+        pid_gui.display(player, SettingsTarget.ghost(entity))
+    end
+end
+
 -- ============================================================================
 -- Blueprint handlers
 -- ============================================================================
@@ -569,6 +600,8 @@ script.on_event(defines.events.on_tick, on_tick)
 script.on_event("pid-combinator-open", on_open_input)
 script.on_event("pid-combinator-copy", on_copy_input)
 script.on_event("pid-combinator-paste", on_paste_input)
+
+script.on_event(defines.events.on_gui_opened, on_gui_opened_fallback)
 
 -- Stub to handle migration in future version
 local function on_configuration_changed(_event) end
