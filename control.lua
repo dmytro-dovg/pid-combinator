@@ -255,15 +255,18 @@ end
 
 local function on_post_entity_died(event)
     local unit_number = event.unit_number
-    local ghost = event.ghost
-    if not unit_number or event.prototype and event.prototype.name ~= "pid-combinator" then return end
+    if not unit_number then return end
+    if event.prototype and event.prototype.name ~= "pid-combinator" then return end
 
+    local source = storage.pid and storage.pid[unit_number]
+    local ghost = event.ghost
     -- Carry over settings to the replacement entity via the ghost's tags.
-    if ghost then
-        local source = storage.pid[unit_number]
+    if ghost and ghost.valid and source then
         local pid_settings = {}
         PidSettings.copy(source, pid_settings)
-        event.ghost.tags = { pid_settings = pid_settings }
+        local tags = ghost.tags or {}
+        tags.pid_settings = pid_settings
+        ghost.tags = tags
     end
 
     if storage.pid then
