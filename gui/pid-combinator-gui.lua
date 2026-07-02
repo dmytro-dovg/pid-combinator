@@ -344,13 +344,13 @@ function PidCombinatorGui.display(player, target)
         direction = "vertical",
     }
 
-    local header = contents.add {
-        type = "frame",
-        style = "subheader_frame",
-    }
-    header.style.height = 36
-    header.style.horizontally_stretchable = true
-    header.style.bottom_margin = 8
+    -- local header = contents.add {
+    --     type = "frame",
+    --     style = "subheader_frame",
+    -- }
+    -- header.style.height = 36
+    -- header.style.horizontally_stretchable = true
+    -- header.style.bottom_margin = 8
 
     local initial_status
     if gui_state.target.kind == "ghost" then
@@ -368,6 +368,7 @@ function PidCombinatorGui.display(player, target)
     }
     status_flow.style.vertical_align = "center"
     status_flow.style.left_padding = 12
+    status_flow.style.top_padding = 8
     status_flow.style.bottom_padding = 8
     status_flow.style.horizontal_spacing = 4
 
