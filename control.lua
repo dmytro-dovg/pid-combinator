@@ -205,7 +205,6 @@ local function on_built(event)
     debugp("on_built")
     local entity = event.entity
     if not entity or not entity.valid then return end
-
     if entity.name == "pid-combinator" then
         local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
         entity.operable = false
@@ -218,7 +217,24 @@ end
 
 local function on_removed(event)
     local entity = event.entity
-    if not entity or not entity.valid or entity.name ~= "pid-combinator" then return end
+    if not entity or not entity.valid then return end
+
+    -- In editor mode a player can select and remove the hidden entity directly.
+    -- Destroy main combinator if hidden output is removed.
+    if entity.name == "pid-combinator-output" then
+        for _, pid in ipairs(entity.surface.find_entities_filtered {
+            position = entity.position,
+            name = "pid-combinator",
+        }) do
+            if pid.valid then
+                debugp("Destroying PID combinator without output")
+                pid.destroy{ raise_destroy = true }
+            end
+        end
+        return
+    end
+
+    if entity.name ~= "pid-combinator" then return end
 
     local state = storage.pid and storage.pid[entity.unit_number]
     if state then
@@ -281,6 +297,7 @@ local function on_entity_cloned(event)
     if not dst or dst.name ~= "pid-combinator" then return end
     local src = event.source
     local carryover_settings = src and src.unit_number and storage.pid and storage.pid[src.unit_number]
+    dst.operable = false
     setup_combinator(dst, carryover_settings)
 end
 
@@ -548,8 +565,10 @@ local function on_tick(event)
     drain_pending_undo_redo(event.tick)
     if not storage.pid then return end
     for unit_number, state in pairs(storage.pid) do
-        if not state.entity.valid or not state.output_entity.valid then
+        if not state.entity.valid then
             storage.pid[unit_number] = nil
+        elseif not state.output_entity.valid then
+            state.entity.destroy{ raise_destroy = true }
         else
             local value = process_pid(state, event.tick)
             pid_gui.on_tick(unit_number, state.entity.status, state.graph_data, event.tick, value)
@@ -565,6 +584,10 @@ local pid_filter = {{filter = "name", name = "pid-combinator"}}
 local built_filter = {
     {filter = "name", name = "pid-combinator"},
     {filter = "ghost_name", name = "pid-combinator", mode = "or"},
+}
+local removed_filter = {
+    {filter = "name", name = "pid-combinator"},
+    {filter = "name", name = "pid-combinator-output", mode = "or"},
 }
 
 local on_built_events = {
@@ -588,7 +611,7 @@ for _, event in pairs(on_built_events) do
 end
 
 for _, event in pairs(on_removed_events) do
-    script.on_event(event, on_removed, pid_filter)
+    script.on_event(event, on_removed, removed_filter)
 end
 
 script.on_event(defines.events.on_post_entity_died, on_post_entity_died, {{filter = "type", type = "arithmetic-combinator"}})
