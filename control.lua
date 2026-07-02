@@ -317,8 +317,10 @@ end
 
 local function on_player_removed(event)
     local player = game.get_player(event.player_index)
-    if not player then return end
-    pid_gui.cleanup(player)
+    if player then pid_gui.cleanup(player) end
+    if storage.copy_sources then
+        storage.copy_sources[event.player_index] = nil
+    end
 end
 
 -- ============================================================================
@@ -567,3 +569,9 @@ script.on_event(defines.events.on_tick, on_tick)
 script.on_event("pid-combinator-open", on_open_input)
 script.on_event("pid-combinator-copy", on_copy_input)
 script.on_event("pid-combinator-paste", on_paste_input)
+
+-- Stub to handle migration in future version
+local function on_configuration_changed(_event) end
+
+script.on_init(function() end)
+script.on_configuration_changed(on_configuration_changed)
