@@ -238,13 +238,25 @@ local function plot(player, gui_state, data, tick)
         }
     end
 
-    -- Horizontal grid lines centered on y=0
-    local half_height = math.floor(offset.y)
-    for i = -half_height, half_height do
-        local shade = (i == 0) and 0.25 or 0.1
+    -- Snap the gridline step to 1/2/5 * 10^n so lines land on round values
+    -- step adapts to axis_maximum.
+    local rough_step = axis_maximum / 3
+    local magnitude = 10 ^ math.floor(math.log(rough_step, 10))
+    local normalized_step = rough_step / magnitude
+    local grid_step
+    if normalized_step < 1.5 then grid_step = magnitude
+    elseif normalized_step < 3 then grid_step = 2 * magnitude
+    elseif normalized_step < 7 then grid_step = 5 * magnitude
+    else grid_step = 10 * magnitude
+    end
+    local step_count = math.floor(axis_maximum / grid_step)
+    for step = -step_count, step_count do
+        local grid_value = step * grid_step
+        local shade = (step == 0) and 0.25 or 0.1
+        local y = map_y(grid_value, axis_maximum)
         rendering.draw_line {
             surface = surface,
-            from = { 0, i }, to = { 2 * offset.x, i },
+            from = { 0, y }, to = { 2 * offset.x, y },
             color = {r=shade, g=shade, b=shade, a=1},
             width = 1,
             players = { player },
