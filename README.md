@@ -14,10 +14,10 @@ Follow these steps to wire up a space platform to fly at a set speed. You don't 
 
 1. Craft and place the PID combinator.
 2. Wire the space platform hub to the **input** side of the combinator.
-   a. In the hub's GUI, check `Read speed`. This is your process variable ![signal-V](docs/signal_V_16.png).
+   - In the hub's GUI, check `Read speed`. This is your process variable ![signal-V](docs/signal_V_16.png).
 3. Wire the **setpoint** source to the input side too, on a *different* signal. A constant combinator with ![signal-S](docs/signal_S_16.png) **= 100** works fine.
 4. Wire PID combinator's **output** side to a pump.
-   a. In the pump's GUI, check `Enable if` and set the condition to ![signal-check](docs/signal-checked-green_16.png) **> 0**.
+   - In the pump's GUI, check `Enable if` and set the condition to ![signal-check](docs/signal-checked-green_16.png) **> 0**.
 5. Open the combinator's GUI. On the **Variables** tab, make sure your process, setpoint and output signals match.
 6. On the **Tuning** tab, start with `Kp = 1, Ki = 0, Kd = 0` and iterate.
 
@@ -28,11 +28,11 @@ Quickstart setup gets the platform traveling at roughly the setpoint speed, but 
 This is where PWM (pulse-width modulation) comes in. It lets us control the pump proportionally to the PID combinator's output. The pump's throughput doesn't change, but it's switched on and off in controlled bursts to limit how much fuel it transfers.
 
 1. Craft and place a decider combinator. This will be our clock.
-   a. Short circuit the combinator by connecting the **output** to its **input** with a single wire.
-   b. Set the following condition ![signal-clock](docs/signal-clock_16.png) **< 60**; set output to ![signal-clock](docs/signal-clock_16.png) **Input count**.
-   c. Wire a constant combinator to the decider's **input** with ![signal-clock](docs/signal-clock_16.png) **= 1**. Once done, you will see that the decider combinator will cycle from 0 to 59 every second.
+   - Short circuit the combinator by connecting the **output** to its **input** with a single wire.
+   - Set the following condition ![signal-clock](docs/signal-clock_16.png) **< 60**; set output to ![signal-clock](docs/signal-clock_16.png) **Input count**.
+   - Wire a constant combinator to the decider's **input** with ![signal-clock](docs/signal-clock_16.png) **= 1**. Once done, you will see that the decider combinator will cycle from 0 to 59 every second.
 2. Connect the output of the "clock" combinator to the pump we built earlier.
-   a. Change `Enable if` condition to ![signal-check](docs/signal-checked-green_16.png) **>** ![signal-clock](docs/signal-clock_16.png).
+   - Change `Enable if` condition to ![signal-check](docs/signal-checked-green_16.png) **>** ![signal-clock](docs/signal-clock_16.png).
 
 ## Further improvements
 
@@ -47,11 +47,11 @@ Build a fuel supply system according to the following schematic:
 The **out** pump needs to activate when the control signal is negative, but our clock is positive and we cannot directly compare the two. In order to make this work we need to invert either ![signal-clock](docs/signal-clock_16.png) or ![signal-check](docs/signal-checked-green_16.png). For this example let's invert ![signal-check](docs/signal-checked-green_16.png).
 
 1. Wire **input** pump to the **storage tank**.
-   a. In the pump's GUI, check `Enable if` and set the condition to ![thruster-fuel](docs/thruster-fuel_16.png) **< 1000**. The number is arbitrary.
+   - In the pump's GUI, check `Enable if` and set the condition to ![thruster-fuel](docs/thruster-fuel_16.png) **< 1000**. The number is arbitrary.
 2. Build an additional arithmetic combinator.
-   a. Set it to the following operation: ![signal-check](docs/signal-checked-green_16.png) **\* -1**.
-   b. Connect its **input** to PID combinator's **output**, and its **output** to the **out** pump.
-   c. In the **out** pump's GUI, check `Enable if` and set the condition to ![signal-check](docs/signal-checked-green_16.png) **>** ![signal-clock](docs/signal-clock_16.png).
+   - Set it to the following operation: ![signal-check](docs/signal-checked-green_16.png) **\* -1**.
+   - Connect its **input** to PID combinator's **output**, and its **output** to the **out** pump.
+   - In the **out** pump's GUI, check `Enable if` and set the condition to ![signal-check](docs/signal-checked-green_16.png) **>** ![signal-clock](docs/signal-clock_16.png).
 
 ## Tuning tips
 
