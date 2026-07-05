@@ -1,6 +1,6 @@
 {
     "name": "pid-combinator",
-    "description": "PID combinator.",
+    "description": "A combinator that runs a PID controller for holding a signal at its setpoint.",
     "version": "0.0.1",
     "title": "PID Combinator",
     "author": "imoth_f",
