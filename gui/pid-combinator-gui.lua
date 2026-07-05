@@ -653,11 +653,22 @@ function PidCombinatorGui.display(player, target)
     })
 
     -- Anti-windup limit
-    tuning_table.add {
+    local anti_windup_label_flow = tuning_table.add {
+        type = "flow",
+        direction = "horizontal",
+    }
+    anti_windup_label_flow.style.vertical_align = "center"
+    anti_windup_label_flow.style.horizontal_spacing = 4
+    anti_windup_label_flow.add {
         type = "label",
         caption = {"gui-pid-combinator.anti-windup-limit"},
         tooltip = {"gui-pid-combinator.anti-windup-limit-tooltip"},
         style = "bold_label",
+    }
+    anti_windup_label_flow.add {
+        type = "sprite",
+        sprite = "info_no_border",
+        tooltip = {"gui-pid-combinator.anti-windup-limit-tooltip"},
     }
 
     local anti_windup_limit_field = tuning_table.add {
