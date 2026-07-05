@@ -20,6 +20,10 @@ local consts = {
 local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts.viewport.height / consts.tile_size) / 2 }
 local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
+local function map_y(value, maximum_value)
+    return -offset.y * (value / maximum_value)
+end
+
 local function status_visuals(status)
     local visuals = {
         [defines.entity_status.no_power] = { sprite = "utility/status_not_working", caption = {"entity-status.no-power"} },
@@ -200,14 +204,33 @@ local function plot(player, gui_state, data, tick)
 
     local tiles_per_second = gui_state.graph.time_scale
     local ticks_per_second = 60
-    local scale = 50
     local tick_grid_offset = (tick % ticks_per_second) / ticks_per_second
     -- With every added GUI reduce sample rate to protect game UPS
     local ttl = PidCombinatorGui.gui_count()
-    for i=0, math.floor(size_tiles.width / tiles_per_second) do
+
+    -- Auto-scale y-axis symmetrically around 0. Grow-only.
+    local visible_ticks = math.ceil(size_tiles.width / tiles_per_second) * ticks_per_second
+    local peak = gui_state.graph.peak or 0
+    for i = data.first, data.last do
+        local sample = data[i]
+        if tick - sample.tick <= visible_ticks then
+            local pv_magnitude = math.abs(sample.value)
+            if pv_magnitude > peak then peak = pv_magnitude end
+            if sample.sp then
+                local sp_magnitude = math.abs(sample.sp)
+                if sp_magnitude > peak then peak = sp_magnitude end
+            end
+        end
+    end
+    gui_state.graph.peak = peak
+    if peak == 0 then peak = 1 end
+    local axis_maximum = peak * 1.1
+
+    for i = 0, math.floor(size_tiles.width / tiles_per_second) do
         rendering.draw_line{
             surface = surface,
-            from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y}, to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y},
+            from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y },
+            to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y },
             color = {r=0.1, g=0.1, b=0.1, a=1},
             width = 1,
             players = { player },
@@ -215,27 +238,31 @@ local function plot(player, gui_state, data, tick)
         }
     end
 
-    for i=0, math.floor(size_tiles.height) do
-        rendering.draw_line{
+    -- Horizontal grid lines centered on y=0
+    local half_height = math.floor(offset.y)
+    for i = -half_height, half_height do
+        local shade = (i == 0) and 0.25 or 0.1
+        rendering.draw_line {
             surface = surface,
-            from = { 0, -offset.y + i}, to = { 2 * offset.x, -offset.y + i},
-            color = {r=0.1, g=0.1, b=0.1, a=1},
+            from = { 0, i }, to = { 2 * offset.x, i },
+            color = {r=shade, g=shade, b=shade, a=1},
             width = 1,
             players = { player },
             time_to_live = ttl,
         }
     end
 
-    for i=data.first + 1, data.last do
-        local p1 = data[i - 1]
-        local p2 = data[i]
-        local x1 = 2*offset.x - (tick - p1.tick) / ticks_per_second * tiles_per_second
-        local x2 = 2*offset.x - (tick - p2.tick) / ticks_per_second * tiles_per_second
+    for i = data.first + 1, data.last do
+        local previous_sample = data[i - 1]
+        local current_sample = data[i]
+        local previous_x = 2 * offset.x - (tick - previous_sample.tick) / ticks_per_second * tiles_per_second
+        local current_x = 2 * offset.x - (tick - current_sample.tick) / ticks_per_second * tiles_per_second
 
-        if p1.sp and p2.sp then
+        if previous_sample.sp and current_sample.sp then
             rendering.draw_line {
                 surface = surface,
-                from = { x1, -p1.sp / scale }, to = { x2, -p2.sp / scale },
+                from = { previous_x, map_y(previous_sample.sp, axis_maximum) },
+                to = { current_x, map_y(current_sample.sp, axis_maximum) },
                 color = {r=0.3, g=0.4, b=0.7, a=0.6},
                 width = 1,
                 players = { player },
@@ -245,7 +272,8 @@ local function plot(player, gui_state, data, tick)
 
         rendering.draw_line {
             surface = surface,
-            from = { x1, -p1.value / scale }, to = { x2, -p2.value / scale },
+            from = { previous_x, map_y(previous_sample.value, axis_maximum) },
+            to = { current_x, map_y(current_sample.value, axis_maximum) },
             color = {r=0, g=1, b=0, a=1},
             width = 1,
             players = { player },
