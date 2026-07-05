@@ -233,12 +233,23 @@ local function plot(player, gui_state, data, tick)
     for i=data.first + 1, data.last do
         local p1 = data[i - 1]
         local p2 = data[i]
-        local from = { 2*offset.x - (tick - p1.tick) / ticks_per_second * tiles_per_second, -p1.value / scale}
-        local to = { 2*offset.x - (tick - p2.tick) / ticks_per_second * tiles_per_second, -p2.value / scale}
+        local x1 = 2*offset.x - (tick - p1.tick) / ticks_per_second * tiles_per_second
+        local x2 = 2*offset.x - (tick - p2.tick) / ticks_per_second * tiles_per_second
+
+        if p1.sp and p2.sp then
+            rendering.draw_line {
+                surface = surface,
+                from = { x1, -p1.sp / scale }, to = { x2, -p2.sp / scale },
+                color = {r=0.3, g=0.4, b=0.7, a=0.6},
+                width = 1,
+                players = { player },
+                time_to_live = ttl,
+            }
+        end
 
         rendering.draw_line {
             surface = surface,
-            from = from, to = to,
+            from = { x1, -p1.value / scale }, to = { x2, -p2.value / scale },
             color = {r=0, g=1, b=0, a=1},
             width = 1,
             players = { player },
@@ -256,7 +267,7 @@ function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
 
     if not data or not value then return end
 
-    List.pushright(data, { tick = tick, value = value.pv })
+    List.pushright(data, { tick = tick, value = value.pv, sp = value.sp })
 
     if List.length(data) > 1 then
         -- Trim older data points
@@ -594,7 +605,7 @@ function PidCombinatorGui.display(player, target)
             minimum_value = 0.0,
             maximum_value = 5,
             value = target:get_k("p"),
-            value_step = 0.1,
+            value_step = 0.05,
         },
         textfield = {
             name = "pid_combinator_kp_textfield_" .. unit_number,
@@ -614,7 +625,7 @@ function PidCombinatorGui.display(player, target)
             minimum_value = 0.0,
             maximum_value = 5,
             value = target:get_k("i"),
-            value_step = 0.1,
+            value_step = 0.05,
         },
         textfield = {
             name = "pid_combinator_ki_textfield_" .. unit_number,
@@ -634,7 +645,7 @@ function PidCombinatorGui.display(player, target)
             minimum_value = 0.0,
             maximum_value = 5,
             value = target:get_k("d"),
-            value_step = 0.1,
+            value_step = 0.05,
         },
         textfield = {
             name = "pid_combinator_kd_textfield_" .. unit_number,
