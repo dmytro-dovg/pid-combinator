@@ -5,7 +5,6 @@ on:
       - main
       - develop
       - release/*
-      - feature/ci
     tags:
       - '*'
 
