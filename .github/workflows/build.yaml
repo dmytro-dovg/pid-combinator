@@ -1,0 +1,96 @@
+name: Package Blueprint Share
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+    tags:
+      - '*'
+
+jobs:
+  Package:
+    runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-latest' || 'macos-arm64' }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+
+      - name: Read version from info.json
+        id: version
+        shell: bash
+        run: |
+          version=$(jq -r .version info.json)
+          printf '\e[32m%s\e[0m\n' "$version"
+          printf "MOD_VERSION=%s\n" "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches info.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          MOD_VERSION: ${{ steps.version.outputs.MOD_VERSION }}
+          REF: ${{ github.ref }}
+        run: |
+          tag="${REF#refs/tags/}"
+          tag="${tag#v}"   # tolerate 'v1.2.3' or '1.2.3'
+          if [[ "$tag" != "$MOD_VERSION" ]]; then
+            printf "\e[31mTag %s does not match info.json version %s\e[0m\n" "$tag" "$MOD_VERSION"
+            exit 1
+          fi
+
+      - name: Package archive
+        id: package-archive
+        shell: bash
+        env:
+          MOD_NAME: ${{ vars.MOD_NAME }}
+          MOD_VERSION: ${{ steps.version.outputs.MOD_VERSION }}
+        run: |
+          set -e
+          archive_path=$(./tools/archive -n $MOD_NAME -v "$MOD_VERSION" dist)
+          result=$?
+          if (( result == 0 )); then
+            printf 'Created archive at \e[32m%s\e[0m\n' "${archive_path}"
+            printf 'OUTPUT_ARCHIVE=%s\n' "$archive_path" >> "$GITHUB_OUTPUT"
+            printf 'OUTPUT_NAME=%s\n' "${archive_path##*/}" >> "$GITHUB_OUTPUT"
+          else
+            printf '\e[31mFailed to archive\e[0m\n'
+            exit 1
+          fi
+
+      - name: Upload artifact (GitHub)
+        if: ${{ github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package-archive.outputs.OUTPUT_NAME }}
+          path: ${{ steps.package-archive.outputs.OUTPUT_ARCHIVE }}
+          archive: false
+
+      - name: Upload artifact (Gitea)
+        if: ${{ github.server_url != 'https://github.com' }}
+        uses: christopherhx/gitea-upload-artifact@v4
+        with:
+          name: ${{ steps.package-archive.outputs.OUTPUT_NAME }}
+          path: ${{ steps.package-archive.outputs.OUTPUT_ARCHIVE }}
+
+      - name: Publish to Factorio Mod Portal
+        if: startsWith(github.ref, 'refs/tags/') && github.server_url == 'https://github.com'
+        env:
+          API_KEY: ${{ secrets.FACTORIO_API_KEY }}
+          ARCHIVE: ${{ steps.package-archive.outputs.OUTPUT_ARCHIVE }}
+          MOD_NAME: ${{ vars.MOD_NAME }}
+        shell: bash
+        run: |
+          printf "Requesting upload URL for %s...\n" "$MOD_NAME"
+          response=$(curl -sSf \
+            -H "Authorization: Bearer $API_KEY" \
+            -F "mod=$MOD_NAME" \
+            https://mods.factorio.com/api/v2/mods/releases/init_upload)
+
+          upload_url=$(printf '%s' "$response" | jq -r .upload_url)
+          if [[ -z "$upload_url" || "$upload_url" == "null" ]]; then
+            printf "\e[31mFailed to get upload URL: %s\e[0m\n" "$response"
+            exit 1
+          fi
+
+          printf "Uploading %s...\n" "$ARCHIVE"
+          curl -sSf -F "file=@$ARCHIVE" "$upload_url"
+          printf "\n\e[32mPublished successfully\e[0m\n"

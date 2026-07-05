@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+usage() {
+    cat <<EOF
+Usage: ${0##*/} [-h] [-n NAME] [-v VERSION] [OUTPUT_DIR]
+
+Create a zip archive of the current directory with a top-level
+<NAME>_<VERSION> folder, excluding patterns from .exclude,
+and copy it to OUTPUT_DIR.
+
+Options:
+  -h            Show this help message and exit
+  -n NAME       Package name (default: current directory name)
+  -v VERSION    Version string to append to the archive name
+
+Arguments:
+  OUTPUT_DIR    Destination directory for the archive (default: build)
+
+Examples:
+  ${0##*/}
+  ${0##*/} -n package -v 1.2.3
+  ${0##*/} -n package -v 1.2.3 dist
+EOF
+}
+
+main() {
+    local flag package_name archive_name version prefix temp_dir
+    local name_elements=()
+    while getopts "hn:v:" flag; do
+        case "$flag" in
+            h) usage; return ;;
+            n) package_name="$OPTARG" ;;
+            v) version="$OPTARG" ;;
+            *) usage >&2; return 1 ;;
+        esac
+    done
+
+    shift $((OPTIND - 1))
+
+    local output_dir="${1:-build}"
+
+    [[ -z $package_name ]] && package_name="${PWD##*/}"
+    name_elements+=("$package_name")
+    [[ -n $version ]] && name_elements+=("$version")
+    prefix="$(IFS=_; printf "${name_elements[*]}")"
+    archive_name="${prefix}.zip"
+
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "$temp_dir"' EXIT
+
+    rsync -a --exclude-from=.exclude ./ "$temp_dir/$prefix/"
+    (cd "$temp_dir" && zip -r "$archive_name" "$prefix" &>/dev/null)
+
+    mkdir -p "$output_dir"
+    mv "$temp_dir/$archive_name" "$output_dir/$archive_name"
+
+    echo "$output_dir/$archive_name"
+}
+
+main "$@"
