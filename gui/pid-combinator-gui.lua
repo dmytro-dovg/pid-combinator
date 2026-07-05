@@ -4,9 +4,6 @@ local ValueSlider = require "gui.value-slider"
 local SettingsTarget = require "gui.settings-target"
 
 local PidCombinatorGui = {}
-local function debugp(msg)
-    localised_print("[PID CONTROLLER GUI]: " .. msg)
-end
 
 local consts = {
     tile_size = 32,
@@ -179,7 +176,6 @@ local function create_surface()
         end
     end
     surface.set_tiles(tiles)
-    debugp("Surface created " .. surface_name)
     return surface
 end
 
@@ -869,7 +865,6 @@ script.on_event(defines.events.on_player_display_scale_changed, function (event)
     for _, viewers in pairs(storage.pid_guis) do
         local gui_state = viewers[player.index]
         if gui_state and gui_state.controls.graph.valid then
-            debugp("Setting zoom " .. player.display_scale)
             gui_state.controls.graph.zoom = player.display_scale
         end
     end

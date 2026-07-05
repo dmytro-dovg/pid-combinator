@@ -3,10 +3,6 @@ local List = require "utils.list"
 local PidSettings = require "model.pid-settings"
 local SettingsTarget = require "gui.settings-target"
 
-local function debugp(msg)
-    localised_print("[PID CONTROLLER]: " .. msg)
-end
-
 local connector_id = {
     input = {
         red = defines.wire_connector_id.combinator_input_red,
@@ -85,8 +81,6 @@ end
 local function setup_combinator(entity, settings)
     if storage.pid and storage.pid[entity.unit_number] then return end
     local output_entity = create_output_for(entity)
-    debugp("Created main " .. serpent.dump(entity))
-    debugp("Created hidden " .. serpent.dump(output_entity))
     storage.pid = storage.pid or {}
     storage.pid[entity.unit_number] = {
         entity = entity,
@@ -202,7 +196,6 @@ end
 -- ============================================================================
 
 local function on_built(event)
-    debugp("on_built")
     local entity = event.entity
     if not entity or not entity.valid then return end
     if entity.name == "pid-combinator" then
@@ -239,7 +232,6 @@ local function on_removed(event)
             name = "pid-combinator",
         }) do
             if pid.valid then
-                debugp("Destroying PID combinator without output")
                 pid.destroy{ raise_destroy = true }
             end
         end
@@ -269,7 +261,6 @@ local function on_removed(event)
     close_viewers(entity.unit_number)
 
     if state and state.output_entity and state.output_entity.valid then
-        debugp("Destroyed hidden " .. serpent.dump(state.output_entity))
         state.output_entity.destroy()
     end
 
@@ -377,7 +368,6 @@ local function on_open_input(event)
         return
     end
 
-    debugp("Opening " .. entity.name)
     pid_gui.destroy(event.player_index, entity.unit_number)
     pid_gui.display(player, target)
 end
