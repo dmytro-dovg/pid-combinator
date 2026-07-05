@@ -223,8 +223,8 @@ local function plot(player, gui_state, data, tick)
         end
     end
     gui_state.graph.peak = peak
-    if peak == 0 then peak = 1 end
-    local axis_maximum = peak * 1.1
+
+    local axis_maximum = math.max(peak, 50) * 1.1
 
     for i = 0, math.floor(size_tiles.width / tiles_per_second) do
         rendering.draw_line{
