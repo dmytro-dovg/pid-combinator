@@ -514,7 +514,7 @@ local function process_pid(state, tick)
     local kp = state.kp
     local ki = state.ki
     local kd = state.kd
-    local max_integral = state.max_integral
+    local anti_windup_limit = state.anti_windup_limit
 
     if red_network then
         if state.signals.pv and state.networks.pv.red then
@@ -545,7 +545,7 @@ local function process_pid(state, tick)
     state.prev_tick = tick
 
     -- Clamp integral to prevent windup
-    state.integral = math.max(-max_integral, math.min(max_integral, state.integral + err * dt))
+    state.integral = math.max(-anti_windup_limit, math.min(anti_windup_limit, state.integral + err * dt))
     local derivative = (err - state.prev_error) / dt
     state.prev_error = err
     local output = kp * err

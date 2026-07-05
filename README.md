@@ -68,6 +68,6 @@ A space platform is a slow system: fuel already in the thruster's buffer takes a
 
 2. **Ki next**, to close the steady-state error. Start at Ki = 0.05 and raise slowly.
    - The speed should drift onto the setpoint over 10-30 seconds and stay there.
-   - Speed overshoots after a setpoint change and takes a long time to come back: either Ki is too aggressive or the integral has wound up. Halve Ki, or lower the **Integral clamp** on the tuning tab. Because the PWM output saturates around 60, a much larger clamp just means the integral takes forever to unwind after a disturbance.
+   - Speed overshoots after a setpoint change and takes a long time to come back: either Ki is too aggressive or the integral has wound up. Halve Ki, or lower the **Anti-windup limit** on the tuning tab. Because the PWM output saturates around 60, a much larger limit just means the integral takes forever to unwind after a disturbance.
 
 3. **Kd, if the speed keeps swinging.** Kd reacts to the rate of change of error, so it damps overshoots and smooths transitions between setpoints. Add it last - start at Kd = 0.1 and raise until residual oscillation flattens out. Because platform speed is reported as an integer it wobbles by +/-1 tick to tick, and Kd amplifies that jitter straight into the pump duty, so keep it modest and stop as soon as the swing is gone.

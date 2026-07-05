@@ -7,7 +7,7 @@ function PidSettings.defaults()
         ki = 0.0,
         kd = 0.0,
         -- anti-windup
-        max_integral = 60,
+        anti_windup_limit = 60,
         signals = {
             pv = { name = "signal-V", type = "virtual" },
             sp = { name = "signal-S", type = "virtual" },
@@ -31,7 +31,7 @@ function PidSettings.copy(source, destination)
     destination.ki = source.ki
     destination.kd = source.kd
 
-    destination.max_integral = source.max_integral
+    destination.anti_windup_limit = source.anti_windup_limit
 
     destination.signals = {
         pv = copy_signal(source.signals.pv),

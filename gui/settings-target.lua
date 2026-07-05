@@ -37,14 +37,14 @@ function Live:set_k(component, value)
     if state then state["k" .. component] = value end
 end
 
-function Live:get_max_integral()
+function Live:get_anti_windup_limit()
     local state = self:_state()
-    return state and state.max_integral
+    return state and state.anti_windup_limit
 end
 
-function Live:set_max_integral(value)
+function Live:set_anti_windup_limit(value)
     local state = self:_state()
-    if state then state.max_integral = value end
+    if state then state.anti_windup_limit = value end
 end
 
 function Live:get_signal(role)
@@ -122,12 +122,12 @@ function Ghost:set_k(component, value)
     self:_write(function(settings) settings["k" .. component] = value end)
 end
 
-function Ghost:get_max_integral()
-    return self:_read().max_integral
+function Ghost:get_anti_windup_limit()
+    return self:_read().anti_windup_limit
 end
 
-function Ghost:set_max_integral(value)
-    self:_write(function(settings) settings.max_integral = value end)
+function Ghost:set_anti_windup_limit(value)
+    self:_write(function(settings) settings.anti_windup_limit = value end)
 end
 
 function Ghost:get_signal(role)
