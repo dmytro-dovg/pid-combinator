@@ -2,7 +2,7 @@
 
 # PID Combinator
 
-A combinator that runs a PID controller - the standard feedback algorithm for holding a value at a target level.
+A combinator that runs a PID controller - the standard feedback algorithm for holding a measured value at its setpoint.
 
 The most obvious use in Factorio is to control space platform's speed.
 
@@ -20,7 +20,7 @@ Follow these steps to wire up a space platform to fly at a set speed. You don't 
 3. Wire the **setpoint** source to the input side too, on a *different* signal. A constant combinator with ![signal-S](docs/signal_S_16.png) **= 100** works fine.
 4. Wire PID combinator's **output** side to a pump.
    - In the pump's GUI, check `Enable if` and set the condition to ![signal-check](docs/signal-checked-green_16.png) **> 0**.
-5. Open the combinator's GUI. On the **Variables** tab, make sure your process, setpoint and output signals match.
+5. Open the combinator's GUI. On the **Variables** tab, make sure your process variable, setpoint and output signals match.
 6. On the **Tuning** tab, start with `Kp = 1, Ki = 0, Kd = 0` and iterate.
 
 ## Pulse-width modulation
@@ -46,7 +46,7 @@ Build a fuel supply system according to the following schematic:
                                              ┊               ┊
                                              └┄<[pump "out"]┄┘
 ```
-The **out** pump needs to activate when the control signal is negative, but our clock is positive and we cannot directly compare the two. In order to make this work we need to invert either ![signal-clock](docs/signal-clock_16.png) or ![signal-check](docs/signal-checked-green_16.png). For this example let's invert ![signal-check](docs/signal-checked-green_16.png).
+The **out** pump needs to activate when the PID output is negative, but our clock is positive and we cannot directly compare the two. In order to make this work we need to invert either ![signal-clock](docs/signal-clock_16.png) or ![signal-check](docs/signal-checked-green_16.png). For this example let's invert ![signal-check](docs/signal-checked-green_16.png).
 
 1. Wire **input** pump to the **storage tank**.
    - In the pump's GUI, check `Enable if` and set the condition to ![thruster-fuel](docs/thruster-fuel_16.png) **< 1000**. The number is arbitrary.
@@ -66,7 +66,7 @@ A space platform is a slow system: fuel already in the thruster's buffer takes a
    - Speed overshoots the setpoint and oscillates around it: Kp is too high. Halve it.
    - Speed climbs painfully slowly: Kp is too low. Double it.
 
-2. **Ki next**, to close the steady-state gap. Start at Ki = 0.05 and raise slowly.
+2. **Ki next**, to close the steady-state error. Start at Ki = 0.05 and raise slowly.
    - The speed should drift onto the setpoint over 10-30 seconds and stay there.
    - Speed overshoots after a setpoint change and takes a long time to come back: either Ki is too aggressive or the integral has wound up. Halve Ki, or lower the **Integral clamp** on the tuning tab. Because the PWM output saturates around 60, a much larger clamp just means the integral takes forever to unwind after a disturbance.
 
