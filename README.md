@@ -8,6 +8,8 @@ The most obvious use in Factorio is to control space platform's speed.
 
 [Example blueprint](examples/example-blueprint-1)
 
+![Demo](docs/demo1.gif)
+
 ## Quickstart
 
 Follow these steps to wire up a space platform to fly at a set speed. You don't need to control the flow of both ![thruster-fuel](docs/thruster-fuel_16.png)fuel and ![thruster-oxidizer](docs/thruster-oxidizer_16.png)oxidizer - just pick either one. It doesn't matter which.
