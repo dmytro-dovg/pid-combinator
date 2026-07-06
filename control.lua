@@ -613,12 +613,15 @@ for _, event in pairs(on_removed_events) do
     script.on_event(event, on_removed, removed_filter)
 end
 
+-- Introduced in 2.1
+if defines.events.on_blueprint_settings_pasted then
+    script.on_event(defines.events.on_blueprint_settings_pasted, on_blueprint_settings_pasted)
+end
 script.on_event(defines.events.on_post_entity_died, on_post_entity_died, {{filter = "type", type = "arithmetic-combinator"}})
 script.on_event(defines.events.on_entity_cloned, on_entity_cloned)
 script.on_event(defines.events.on_undo_applied, on_undo_applied)
 script.on_event(defines.events.on_redo_applied, on_redo_applied)
 script.on_event(defines.events.on_player_removed, on_player_removed)
-script.on_event(defines.events.on_blueprint_settings_pasted, on_blueprint_settings_pasted)
 script.on_event(defines.events.on_player_setup_blueprint, on_player_setup_blueprint)
 script.on_event(defines.events.on_tick, on_tick)
 
