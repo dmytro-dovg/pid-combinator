@@ -488,6 +488,7 @@ local function process_pid(state, tick)
 
     if entity.status == defines.entity_status.no_power then
         state.prev_tick = nil
+        state.integral = 0
         local cb = state.output_entity.get_or_create_control_behavior()
         local section = cb.get_section(1)
         if section then section.clear_slot(1) end
