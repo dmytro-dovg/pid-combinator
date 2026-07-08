@@ -88,8 +88,9 @@ local function setup_combinator(entity, settings)
         pending_connection_changes = { },
         -- PID state
         integral = 0,
-        prev_error = 0,
         prev_tick = nil,
+        prev_pv = nil,
+        filtered_derivative = 0,
         graph_data = List.new(),
     }
     local new_settings = storage.pid[entity.unit_number]
@@ -488,7 +489,9 @@ local function process_pid(state, tick)
 
     if entity.status == defines.entity_status.no_power then
         state.prev_tick = nil
+        state.prev_pv = nil
         state.integral = 0
+        state.filtered_derivative = 0
         local cb = state.output_entity.get_or_create_control_behavior()
         local section = cb.get_section(1)
         if section then section.clear_slot(1) end
@@ -537,11 +540,18 @@ local function process_pid(state, tick)
 
     -- Clamp integral to prevent windup
     state.integral = math.max(-anti_windup_limit, math.min(anti_windup_limit, state.integral + err * dt))
-    local derivative = (err - state.prev_error) / dt
-    state.prev_error = err
+
+    -- Derivative on the measurement (not the error) so a setpoint step doesn't
+    -- produce a derivative kick. Passed through a low-pass filter to tame noise on Kd.
+    local prev_pv = state.prev_pv or pv
+    local raw_derivative = -(pv - prev_pv) / dt
+    local alpha = 0.3
+    state.filtered_derivative = (1 - alpha) * (state.filtered_derivative or 0) + alpha * raw_derivative
+    state.prev_pv = pv
+
     local output = kp * err
         + ki * state.integral
-        + kd * derivative
+        + kd * state.filtered_derivative
 
     write_output(state, output)
     return { output = output, pv = pv, sp = sp }
