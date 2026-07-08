@@ -17,6 +17,17 @@ local consts = {
     },
 }
 
+local colors = {
+    graph = {
+        sp_line = { r=0.0, g=0.447, b=0.698, a=1.0, },
+        pv_line = { r=0.714, g=0.835, b=0.122, a=1.0, },
+        prominent_gridline = { r=0.25, g=0.25, b=0.25, a=1.0, },
+        gridline = { r=0.1, g=0.1, b=0.1, a=1.0, },
+        prominent_gridline_label = { r=0.25, g=0.25, b=0.25, a=1.0, },
+        gridline_label = { r=0.25, g=0.25, b=0.25, a=1.0, },
+    }
+}
+
 local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts.viewport.height / consts.tile_size) / 2 }
 local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
@@ -226,6 +237,7 @@ local function plot(player, gui_state, data, tick)
 
     local axis_maximum = math.max(peak, 50) * 1.1
 
+    -- Vertical gridlines
     for i = 0, math.floor(size_tiles.width / tiles_per_second) do
         rendering.draw_line{
             surface = surface,
@@ -252,13 +264,29 @@ local function plot(player, gui_state, data, tick)
     local step_count = math.floor(axis_maximum / grid_step)
     for step = -step_count, step_count do
         local grid_value = step * grid_step
-        local shade = (step == 0) and 0.25 or 0.1
+        local gridline_color = (step == 0) and colors.graph.prominent_gridline or colors.graph.gridline
+        local text_color = (step == 0) and colors.graph.prominent_gridline_label or colors.graph.gridline_label
         local y = map_y(grid_value, axis_maximum)
+        -- Horizontal gridlines
         rendering.draw_line {
             surface = surface,
             from = { 0, y }, to = { 2 * offset.x, y },
-            color = {r=shade, g=shade, b=shade, a=1},
+            color = gridline_color,
             width = 1,
+            players = { player },
+            time_to_live = ttl,
+        }
+
+        -- Horizontal gridlines text
+        rendering.draw_text {
+            text = grid_value,
+            surface = surface,
+            -- 0.125 -- 4px padding from the right margin
+            target = { 2 * offset.x - 0.125, y },
+            color = text_color,
+            font = "default-semibold",
+            scale = 1.0,
+            alignment = "right",
             players = { player },
             time_to_live = ttl,
         }
@@ -270,23 +298,25 @@ local function plot(player, gui_state, data, tick)
         local previous_x = 2 * offset.x - (tick - previous_sample.tick) / ticks_per_second * tiles_per_second
         local current_x = 2 * offset.x - (tick - current_sample.tick) / ticks_per_second * tiles_per_second
 
+        -- Setpoint line
         if previous_sample.sp and current_sample.sp then
             rendering.draw_line {
                 surface = surface,
                 from = { previous_x, map_y(previous_sample.sp, axis_maximum) },
                 to = { current_x, map_y(current_sample.sp, axis_maximum) },
-                color = {r=0.3, g=0.4, b=0.7, a=0.6},
+                color = colors.graph.sp_line,
                 width = 1,
                 players = { player },
                 time_to_live = ttl,
             }
         end
 
+        -- Process variable line
         rendering.draw_line {
             surface = surface,
             from = { previous_x, map_y(previous_sample.value, axis_maximum) },
             to = { current_x, map_y(current_sample.value, axis_maximum) },
-            color = {r=0, g=1, b=0, a=1},
+            color = colors.graph.pv_line,
             width = 1,
             players = { player },
             time_to_live = ttl,
