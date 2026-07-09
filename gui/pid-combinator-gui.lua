@@ -559,7 +559,7 @@ function PidCombinatorGui.display(player, target)
         name = "pid_combinator_terms_button_" .. unit_number,
         style = "frame_action_button",
         sprite = "pid-combinator-terms",
-        tooltip = {"gui-pid-combinator.pin-tooltip"},
+        tooltip = {"gui-pid-combinator.terms-button-tooltip"},
     }
     terms_button.style.right_margin = 4
     terms_button.toggled = false
