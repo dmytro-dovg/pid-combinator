@@ -516,19 +516,26 @@ function PidCombinatorGui.display(player, target)
     else
         gui_state.ghost_origin = nil
     end
-    local frame = player.gui.screen.add {
+    -- Outer invisible frame container
+    local outer = player.gui.screen.add {
         type = "frame",
         name = "pid_combinator_frame_" .. player.index .. "_" .. unit_number,
+        style = "invisible_frame",
+        direction = "horizontal",
+    }
+    outer.auto_center = true
+    gui_state.frame = outer
+
+    local frame = outer.add {
+        type = "frame",
         direction = "vertical",
     }
-    gui_state.frame = frame
-    frame.auto_center = true
 
     local titlebar = frame.add {
         type = "flow",
         name = "titlebar",
     }
-    titlebar.drag_target = frame
+    titlebar.drag_target = outer
 
     titlebar.add {
         type = "label",
@@ -902,28 +909,48 @@ function PidCombinatorGui.display(player, target)
     anti_windup_limit_field.style.width = 80
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
 
-    local tab_tuning_content_right = tab_tuning_content.add {
-        type = "flow",
-        direction = "vertical",
-        name = "tab_tuning_content_right",
-    }
-    tab_tuning_content_right.style.horizontally_stretchable = true
-    tab_tuning_content_right.style.vertically_stretchable = true
-
-    -- Term indicators
-    local term_indicators_frame = tab_tuning_content_right.add {
+    -- PID terms side panel
+    local side_frame = outer.add {
         type = "frame",
-        style = "shallow_frame_in_shallow_frame",
         direction = "vertical",
     }
-    term_indicators_frame.style.padding = 8
+    side_frame.visible = false
+
+    local side_titlebar = side_frame.add {
+        type = "flow",
+        name = "side_titlebar",
+    }
+    side_titlebar.drag_target = outer
+    side_titlebar.add {
+        type = "label",
+        style = "frame_title",
+        caption = {"gui-pid-combinator.term-panel-title"},
+        ignored_by_interaction = true,
+    }
+    local side_filler = side_titlebar.add {
+        type = "empty-widget",
+        style = "draggable_space_header",
+        ignored_by_interaction = true,
+    }
+    side_filler.style.horizontally_stretchable = true
+    side_filler.style.height = 24
+    side_filler.style.right_margin = 0
+    side_filler.style.left_margin = 8
+
+    local side_contents = side_frame.add {
+        type = "frame",
+        style = "inside_shallow_frame",
+        direction = "vertical",
+    }
+    side_contents.style.padding = 8
+
     for index, term in ipairs(terms) do
         gui_state.controls[term.key .. "_camera"] =
-            create_term_camera(gui_state, term_indicators_frame, index, term.caption, player.display_scale)
+            create_term_camera(gui_state, side_contents, index, term.caption, player.display_scale)
     end
+    gui_state.controls.side_frame = side_frame
 
-    -- End
-    player.opened = frame
+    player.opened = outer
 end
 
 script.on_event(defines.events.on_gui_value_changed, function(event)
@@ -1059,6 +1086,17 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
+    local terms_unit_number = tonumber(event.element.name:match("^pid_combinator_terms_button_(%d+)$"))
+    if terms_unit_number then
+        local viewer_state = gui_state(event.player_index, terms_unit_number)
+        if not viewer_state then return end
+        local side_frame = viewer_state.controls.side_frame
+        if not (side_frame and side_frame.valid) then return end
+        side_frame.visible = not side_frame.visible
+        event.element.toggled = side_frame.visible
+        return
+    end
+
     local pin_unit_number = tonumber(event.element.name:match("^pid_combinator_pin_button_(%d+)$"))
     if pin_unit_number then
         local viewer_state = gui_state(event.player_index, pin_unit_number)
