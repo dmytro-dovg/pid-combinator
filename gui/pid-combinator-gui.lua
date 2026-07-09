@@ -2,60 +2,23 @@ local List = require "utils.list"
 local SignalPicker = require "gui.signal-picker"
 local ValueSlider = require "gui.value-slider"
 local SettingsTarget = require "gui.settings-target"
+local C = require "constants"
 
 local PidCombinatorGui = {}
 
-local consts = {
-    tile_size = 32,
-    viewport = {
-        width = 300,
-        height = 200,
-    },
-    preview = {
-        width = 200,
-        height = 200,
-    },
+local colors = C.colors
+local term_indicator = C.term_indicator
+local terms = C.terms
+
+local px_per_tile = 1 / C.graph.tile_size
+local offset = {
+    x = (C.graph.viewport.width  / C.graph.tile_size) / 2,
+    y = (C.graph.viewport.height / C.graph.tile_size) / 2,
 }
-
-local colors = {
-    graph = {
-        sp_line = { 0.0, 0.447, 0.698, 1.0, },
-        pv_line = { 0.714, 0.835, 0.122, 1.0, },
-        prominent_gridline = { 0.25, 0.25, 0.25, 1.0, },
-        gridline = { 0.1, 0.1, 0.1, 1.0, },
-        prominent_gridline_label = { 0.25, 0.25, 0.25, 1.0, },
-        gridline_label = { 0.25, 0.25, 0.25, 1.0, },
-        p_bar = { 5, 243, 0, },
-        i_bar = { 5, 243, 0, },
-        d_bar = { 5, 243, 0, },
-        term_indicator_frame = { 62,61, 62, },
-        term_indicator_background = { 80, 80, 80, },
-        term_indicator_tick = { 62, 61, 62, },
-        term_indicator_zero  = { 42, 41, 42, },
-    }
+local size_tiles = {
+    width  = C.graph.viewport.width  / C.graph.tile_size,
+    height = C.graph.viewport.height / C.graph.tile_size,
 }
-
-local term_indicator = {
-    width_px  = 110,
-    height_px = 12,
-    tick_step_px = 6,
-    tick_count = 8,
-    zero_line_width = 2,
-    row_gap_px = 0,
-    surface_origin = { x = 0, y = 10 },
-}
-
--- Config for the three PID term indicators
-local terms = {
-    { key = "p", caption = {"gui-pid-combinator.term-p"} },
-    { key = "i", caption = {"gui-pid-combinator.term-i"} },
-    { key = "d", caption = {"gui-pid-combinator.term-d"} },
-}
-
-local px_per_tile = 1 / consts.tile_size
-
-local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts.viewport.height / consts.tile_size) / 2 }
-local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
 local function map_y(value, maximum_value)
     return -offset.y * (value / maximum_value)
@@ -220,8 +183,9 @@ local function create_surface()
     surface.force_generate_chunk_requests()
 
     local tiles = {}
-    for x = -16, 16 do
-        for y = -16, 16 do
+    local radius = C.graph.surface_tile_radius
+    for x = -radius, radius do
+        for y = -radius, radius do
             table.insert(tiles, {name = "out-of-map", position = {x, y}})
         end
     end
@@ -238,8 +202,8 @@ local function create_graph(gui_state, parent, initial_zoom)
         zoom = initial_zoom
     }
 
-    graph_camera.style.width = consts.viewport.width
-    graph_camera.style.height = consts.viewport.height
+    graph_camera.style.width = C.graph.viewport.width
+    graph_camera.style.height = C.graph.viewport.height
     return graph_camera
 end
 
@@ -284,7 +248,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         left_top     = { center.x - half_w, bottom },
         right_bottom = { center.x + half_w, top },
         filled = true,
-        color = colors.graph.term_indicator_frame,
+        color = colors.terms.frame,
         players = { player },
         time_to_live = ttl,
     }
@@ -293,7 +257,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         left_top     = { center.x - half_w + inset, inner_bottom },
         right_bottom = { center.x + half_w - inset, inner_top },
         filled = true,
-        color = colors.graph.term_indicator_background,
+        color = colors.terms.background,
         players = { player },
         time_to_live = ttl,
     }
@@ -322,7 +286,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
                 surface = surface,
                 from = { tick_x, inner_bottom },
                 to   = { tick_x, inner_top },
-                color = colors.graph.term_indicator_tick,
+                color = colors.terms.tick,
                 width = 1,
                 players = { player },
                 time_to_live = ttl,
@@ -335,7 +299,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         surface = surface,
         from = { center.x, bottom },
         to   = { center.x, top },
-        color = colors.graph.term_indicator_zero,
+        color = colors.terms.zero,
         width = term_indicator.zero_line_width,
         players = { player },
         time_to_live = ttl,
@@ -348,7 +312,7 @@ local function plot(player, gui_state, data, tick, value)
     if not surface or not surface.valid then return end
 
     local tiles_per_second = gui_state.graph.time_scale
-    local ticks_per_second = 60
+    local ticks_per_second = C.ticks_per_second
     local tick_grid_offset = (tick % ticks_per_second) / ticks_per_second
     -- With every added GUI reduce sample rate to protect game UPS
     local ttl = PidCombinatorGui.gui_count()
@@ -369,7 +333,7 @@ local function plot(player, gui_state, data, tick, value)
     end
     gui_state.graph.peak = peak
 
-    local axis_maximum = math.max(peak, 50) * 1.1
+    local axis_maximum = math.max(peak, C.graph.axis_min_scale) * C.graph.axis_margin
 
     -- Vertical gridlines
     for i = 0, math.floor(size_tiles.width / tiles_per_second) do
@@ -415,8 +379,7 @@ local function plot(player, gui_state, data, tick, value)
         rendering.draw_text {
             text = grid_value,
             surface = surface,
-            -- 0.125 -- 4px padding from the right margin
-            target = { 2 * offset.x - 0.125, y },
+            target = { 2 * offset.x - C.graph.label_right_padding, y },
             color = text_color,
             font = "default-semibold",
             scale = 1.0,
@@ -465,7 +428,7 @@ local function plot(player, gui_state, data, tick, value)
             draw_term_indicator(surface, player, ttl,
                 term_indicator_center(index),
                 value[term.key],
-                colors.graph[term.key .. "_bar"])
+                colors.terms[term.key .. "_bar"])
         end
     end
 end
@@ -483,7 +446,7 @@ function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
 
     if List.length(data) > 1 then
         -- Trim older data points
-        while List.length(data) > 0 and (tick - data[data.first].tick) / 60 > 25 do
+        while List.length(data) > 0 and (tick - data[data.first].tick) / C.ticks_per_second > C.graph.data_retention_seconds do
             List.popleft(data)
         end
         -- With every added GUI reduce sample rate to protect game UPS
@@ -657,8 +620,8 @@ function PidCombinatorGui.display(player, target)
         name = "graph_frame",
     }
 
-    graph_frame.style.width = consts.viewport.width
-    graph_frame.style.height = consts.viewport.height
+    graph_frame.style.width = C.graph.viewport.width
+    graph_frame.style.height = C.graph.viewport.height
 
     gui_state.graph.surface = gui_state.graph.surface or create_surface()
     gui_state.controls.graph = create_graph(gui_state, graph_frame, player.display_scale)
@@ -676,8 +639,8 @@ function PidCombinatorGui.display(player, target)
         name = "preview",
     }
 
-    preview.style.height = 200
-    preview.style.width = 200
+    preview.style.height = C.graph.preview.height
+    preview.style.width = C.graph.preview.width
     preview.entity = target:preview_entity()
 
     local section_2 = contents.add {

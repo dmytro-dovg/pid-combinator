@@ -2,6 +2,7 @@ local pid_gui = require "gui.pid-combinator-gui"
 local List = require "utils.list"
 local PidSettings = require "model.pid-settings"
 local SettingsTarget = require "gui.settings-target"
+local C = require "constants"
 
 local connector_id = {
     input = {
@@ -52,7 +53,7 @@ local function write_output(state, value)
                 quality = "normal",
             },
             -- Clamp value as the game crashes when it goes out of bounds of int32
-            min = math.min(2147483647, math.max(-2147483648, math.floor(value))),
+            min = math.min(C.pid.output_max, math.max(C.pid.output_min, math.floor(value))),
         })
     else
         section.clear_slot(1)
@@ -139,11 +140,9 @@ end
 -- so restoration is deferred one tick.
 -- ============================================================================
 
-local UNDO_REDO_MAX_AGE = 60 * 60 * 60
-
 local function cache_put(cache, entity, snapshot)
     for key, cached in pairs(cache) do
-        if game.tick - cached.tick > UNDO_REDO_MAX_AGE then
+        if game.tick - cached.tick > C.undo_redo_max_age_ticks then
             cache[key] = nil
         end
     end
@@ -531,9 +530,8 @@ local function process_pid(state, tick)
     local err = sp - pv
 
     local prev_tick = state.prev_tick or (tick - 1)
-    local dt = (tick - prev_tick) / 60
-    -- Clamp dt to limit huge integral tick
-    if dt > 1 then dt = 1 end
+    local dt = (tick - prev_tick) / C.ticks_per_second
+    if dt > C.pid.dt_clamp_seconds then dt = C.pid.dt_clamp_seconds end
     -- Safeguard against abnormal ticks
     if dt <= 0 then state.prev_tick = tick; return end
     state.prev_tick = tick
@@ -545,7 +543,7 @@ local function process_pid(state, tick)
     -- produce a derivative kick. Passed through a low-pass filter to tame noise on Kd.
     local prev_pv = state.prev_pv or pv
     local raw_derivative = -(pv - prev_pv) / dt
-    local alpha = 0.3
+    local alpha = C.pid.derivative_lpf_alpha
     state.filtered_derivative = (1 - alpha) * (state.filtered_derivative or 0) + alpha * raw_derivative
     state.prev_pv = pv
 
