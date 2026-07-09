@@ -47,11 +47,11 @@ local function update_status(viewers, status)
     for _, gui_state in pairs(viewers) do
         if gui_state.controls.last_status ~= status then
             gui_state.controls.last_status = status
-            local status_visuals = status_visuals(status)
+            local visuals = status_visuals(status)
             local sprite_element = gui_state.controls.status_sprite
             local label_element = gui_state.controls.status_label
-            if sprite_element and sprite_element.valid then sprite_element.sprite = status_visuals.sprite end
-            if label_element and label_element.valid then label_element.caption = status_visuals.caption end
+            if sprite_element and sprite_element.valid then sprite_element.sprite = visuals.sprite end
+            if label_element and label_element.valid then label_element.caption = visuals.caption end
         end
     end
 end
