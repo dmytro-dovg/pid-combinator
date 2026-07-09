@@ -2,7 +2,7 @@
 Version: 0.1.3
 Date: 2026-xx-xx
   Gui:
-    - Added a side panel with PID term indicates.
+    - Added a side panel with PID term indicators.
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.2
 Date: 2026-07-08
