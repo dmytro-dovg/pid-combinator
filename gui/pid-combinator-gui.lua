@@ -341,7 +341,7 @@ local function plot(player, gui_state, data, tick, value)
             surface = surface,
             from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y },
             to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y },
-            color = { 0.1, 0.1, 0.1, 1},
+            color = colors.graph.gridline,
             width = 1,
             players = { player },
             time_to_live = ttl,
