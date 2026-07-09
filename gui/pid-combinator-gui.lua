@@ -175,7 +175,9 @@ local function create_surface()
     local surface = game.create_surface(surface_name, surface_size)
 
     for _, force in pairs(game.forces) do
-        force.set_surface_hidden(surface, true)
+        if not C.debug then
+            force.set_surface_hidden(surface, true)
+        end
     end
 
     surface.peaceful_mode = true

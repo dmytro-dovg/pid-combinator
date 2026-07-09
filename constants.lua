@@ -1,5 +1,7 @@
 local C = {}
 
+C.debug = false
+
 C.ticks_per_second = 60
 
 -- Drop undo/redo entries older than this.
