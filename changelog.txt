@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.3
 Date: 2026-xx-xx
+  Features:
+    - Added low-pass filter to the derivative term to make it less noisy.
   Gui:
     - Added a side panel with PID term indicators.
 ---------------------------------------------------------------------------------------------------
