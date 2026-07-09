@@ -547,6 +547,17 @@ function PidCombinatorGui.display(player, target)
     filler.style.right_margin = 8
     filler.style.left_margin = 8
 
+    local terms_button = titlebar.add {
+        type = "sprite-button",
+        name = "pid_combinator_terms_button_" .. unit_number,
+        style = "frame_action_button",
+        sprite = "pid-combinator-terms",
+        tooltip = {"gui-pid-combinator.pin-tooltip"},
+    }
+    terms_button.style.right_margin = 4
+    terms_button.toggled = false
+    gui_state.controls.terms_button = terms_button
+
     local pin_button = titlebar.add {
         type = "sprite-button",
         name = "pid_combinator_pin_button_" .. unit_number,
