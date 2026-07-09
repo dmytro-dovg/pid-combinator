@@ -16,7 +16,7 @@ local function map_y(value, maximum_value)
     return -offset.y * (value / maximum_value)
 end
 
--- Center of a term indicator withing a surface. P=1, I=2, D=3.
+-- Center of a term indicator within a surface. P=1, I=2, D=3.
 local function term_indicator_center(index)
     local row_pitch = (C.term_indicator.height_px + C.term_indicator.row_gap_px) * C.graph.px_per_tile
     return {
