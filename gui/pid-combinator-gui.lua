@@ -457,12 +457,16 @@ local function plot(player, gui_state, data, tick, value)
         }
     end
 
-    -- PID term indicators
-    for index, term in ipairs(terms) do
-        draw_term_indicator(surface, player, ttl,
-            term_indicator_center(index),
-            value[term.key],
-            colors.graph[term.key .. "_bar"])
+    -- PID term indicators.
+    -- Skip when the side panel is hidden.
+    local side_frame = gui_state.controls.side_frame
+    if side_frame and side_frame.valid and side_frame.visible then
+        for index, term in ipairs(terms) do
+            draw_term_indicator(surface, player, ttl,
+                term_indicator_center(index),
+                value[term.key],
+                colors.graph[term.key .. "_bar"])
+        end
     end
 end
 
