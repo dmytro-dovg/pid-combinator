@@ -8,7 +8,7 @@ The most obvious use in Factorio is to control space platform's speed.
 
 [Example blueprint](examples/example-blueprint-1)
 
-![Demo](docs/demo1.gif)
+![Demo](docs/demo3.gif)
 
 ## Quickstart
 
