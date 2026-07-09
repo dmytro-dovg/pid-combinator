@@ -175,9 +175,7 @@ local function create_surface()
     local surface = game.create_surface(surface_name, surface_size)
 
     for _, force in pairs(game.forces) do
-        if not C.debug then
-            force.set_surface_hidden(surface, true)
-        end
+        force.set_surface_hidden(surface, not C.debug.show_surface)
     end
 
     surface.peaceful_mode = true
@@ -489,7 +487,7 @@ function PidCombinatorGui.display(player, target)
     local outer = player.gui.screen.add {
         type = "frame",
         name = "pid_combinator_frame_" .. player.index .. "_" .. unit_number,
-        style = "invisible_frame",
+        style = C.debug.show_invisible_frame and "pid_combinator_chroma_frame" or "invisible_frame",
         direction = "horizontal",
     }
     outer.auto_center = true

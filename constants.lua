@@ -1,6 +1,9 @@
 local C = {}
 
-C.debug = false
+C.debug = {
+    show_surface = false,
+    show_invisible_frame = false,
+}
 
 C.ticks_per_second = 60
 
