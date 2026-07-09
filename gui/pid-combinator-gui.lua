@@ -19,20 +19,55 @@ local consts = {
 
 local colors = {
     graph = {
-        sp_line = { r=0.0, g=0.447, b=0.698, a=1.0, },
-        pv_line = { r=0.714, g=0.835, b=0.122, a=1.0, },
-        prominent_gridline = { r=0.25, g=0.25, b=0.25, a=1.0, },
-        gridline = { r=0.1, g=0.1, b=0.1, a=1.0, },
-        prominent_gridline_label = { r=0.25, g=0.25, b=0.25, a=1.0, },
-        gridline_label = { r=0.25, g=0.25, b=0.25, a=1.0, },
+        sp_line = { 0.0, 0.447, 0.698, 1.0, },
+        pv_line = { 0.714, 0.835, 0.122, 1.0, },
+        prominent_gridline = { 0.25, 0.25, 0.25, 1.0, },
+        gridline = { 0.1, 0.1, 0.1, 1.0, },
+        prominent_gridline_label = { 0.25, 0.25, 0.25, 1.0, },
+        gridline_label = { 0.25, 0.25, 0.25, 1.0, },
+        p_bar = { 5, 243, 0, },
+        i_bar = { 5, 243, 0, },
+        d_bar = { 5, 243, 0, },
+        term_indicator_frame = { 62,61, 62, },
+        term_indicator_background = { 80, 80, 80, },
+        term_indicator_tick = { 62, 61, 62, },
+        term_indicator_zero  = { 42, 41, 42, },
     }
 }
+
+local term_indicator = {
+    width_px  = 110,
+    height_px = 12,
+    tick_step_px = 6,
+    tick_count = 8,
+    zero_line_width = 2,
+    row_gap_px = 0,
+    surface_origin = { x = 0, y = 10 },
+}
+
+-- Config for the three PID term indicators
+local terms = {
+    { key = "p", caption = {"gui-pid-combinator.term-p"} },
+    { key = "i", caption = {"gui-pid-combinator.term-i"} },
+    { key = "d", caption = {"gui-pid-combinator.term-d"} },
+}
+
+local px_per_tile = 1 / consts.tile_size
 
 local offset = { x = (consts.viewport.width / consts.tile_size) / 2, y = (consts.viewport.height / consts.tile_size) / 2 }
 local size_tiles = { width = consts.viewport.width / consts.tile_size, height = consts.viewport.height / consts.tile_size }
 
 local function map_y(value, maximum_value)
     return -offset.y * (value / maximum_value)
+end
+
+-- Center of a term indicator withing a surface. P=1, I=2, D=3.
+local function term_indicator_center(index)
+    local row_pitch = (term_indicator.height_px + term_indicator.row_gap_px) * px_per_tile
+    return {
+        x = term_indicator.surface_origin.x,
+        y = term_indicator.surface_origin.y + (index - 1) * row_pitch,
+    }
 end
 
 local function status_visuals(status)
@@ -208,7 +243,106 @@ local function create_graph(gui_state, parent, initial_zoom)
     return graph_camera
 end
 
-local function plot(player, gui_state, data, tick)
+local function create_term_camera(gui_state, parent, index, caption, initial_zoom)
+    local container = parent.add {
+        type = "flow",
+        direction = "vertical",
+    }
+    container.style.horizontal_align = "center"
+    container.add {
+        type = "label",
+        caption = caption,
+        style = "caption_label",
+    }
+    local camera_frame = container.add {
+        type = "frame",
+        style = "deep_frame_in_shallow_frame",
+    }
+    local camera = camera_frame.add {
+        type = "camera",
+        position = term_indicator_center(index),
+        surface_index = gui_state.graph.surface.index,
+        zoom = initial_zoom,
+    }
+    camera.style.width  = term_indicator.width_px
+    camera.style.height = term_indicator.height_px
+    return camera
+end
+
+local function draw_term_indicator(surface, player, ttl, center, term_value, bar_color)
+    local inset = px_per_tile
+    local half_w = term_indicator.width_px * 0.5 * px_per_tile
+    local half_h = term_indicator.height_px * 0.5 * px_per_tile
+    local top = center.y - half_h
+    local bottom = center.y + half_h
+    local inner_top = top + inset
+    local inner_bottom = bottom - inset
+
+    -- Frame and background
+    rendering.draw_rectangle {
+        surface = surface,
+        left_top     = { center.x - half_w, bottom },
+        right_bottom = { center.x + half_w, top },
+        filled = true,
+        color = colors.graph.term_indicator_frame,
+        players = { player },
+        time_to_live = ttl,
+    }
+    rendering.draw_rectangle {
+        surface = surface,
+        left_top     = { center.x - half_w + inset, inner_bottom },
+        right_bottom = { center.x + half_w - inset, inner_top },
+        filled = true,
+        color = colors.graph.term_indicator_background,
+        players = { player },
+        time_to_live = ttl,
+    }
+
+    -- Value bar
+    local max_extent = half_w - inset
+    local raw_extent = term_value * px_per_tile
+    local extent = math.max(-max_extent, math.min(max_extent, raw_extent))
+    local bar_left  = math.min(center.x, center.x + extent)
+    local bar_right = math.max(center.x, center.x + extent)
+    rendering.draw_rectangle {
+        surface = surface,
+        left_top     = { bar_left,  inner_bottom },
+        right_bottom = { bar_right, inner_top },
+        filled = true,
+        color = bar_color,
+        players = { player },
+        time_to_live = ttl,
+    }
+
+    -- Tick marks
+    for i = 1, term_indicator.tick_count do
+        local dx = i * term_indicator.tick_step_px * px_per_tile
+        for _, tick_x in ipairs({ center.x - dx, center.x + dx }) do
+            rendering.draw_line {
+                surface = surface,
+                from = { tick_x, inner_bottom },
+                to   = { tick_x, inner_top },
+                color = colors.graph.term_indicator_tick,
+                width = 1,
+                players = { player },
+                time_to_live = ttl,
+            }
+        end
+    end
+
+    -- Zero line
+    rendering.draw_line {
+        surface = surface,
+        from = { center.x, bottom },
+        to   = { center.x, top },
+        color = colors.graph.term_indicator_zero,
+        width = term_indicator.zero_line_width,
+        players = { player },
+        time_to_live = ttl,
+    }
+end
+
+local function plot(player, gui_state, data, tick, value)
     if not gui_state then return end
     local surface = gui_state.graph.surface
     if not surface or not surface.valid then return end
@@ -243,7 +377,7 @@ local function plot(player, gui_state, data, tick)
             surface = surface,
             from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y },
             to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y },
-            color = {r=0.1, g=0.1, b=0.1, a=1},
+            color = { 0.1, 0.1, 0.1, 1},
             width = 1,
             players = { player },
             time_to_live = ttl,
@@ -322,6 +456,14 @@ local function plot(player, gui_state, data, tick)
             time_to_live = ttl,
         }
     end
+
+    -- PID term indicators
+    for index, term in ipairs(terms) do
+        draw_term_indicator(surface, player, ttl,
+            term_indicator_center(index),
+            value[term.key],
+            colors.graph[term.key .. "_bar"])
+    end
 end
 
 function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
@@ -344,7 +486,7 @@ function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
         local n = PidCombinatorGui.gui_count()
         if n > 0 and tick % n == 0 then
             for player_index, gui_state in pairs(viewers) do
-                plot(player_index, gui_state, data, tick)
+                plot(player_index, gui_state, data, tick, value)
             end
         end
     end
@@ -551,7 +693,7 @@ function PidCombinatorGui.display(player, target)
 
     local tab_tuning_content = tabbed_pane.add {
         type = "flow",
-        direction = "vertical",
+        direction = "horizontal",
         name = "tab_tuning_content",
     }
     tab_tuning_content.style.padding = 8
@@ -749,6 +891,27 @@ function PidCombinatorGui.display(player, target)
     anti_windup_limit_field.style.width = 80
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
 
+    local tab_tuning_content_right = tab_tuning_content.add {
+        type = "flow",
+        direction = "vertical",
+        name = "tab_tuning_content_right",
+    }
+    tab_tuning_content_right.style.horizontally_stretchable = true
+    tab_tuning_content_right.style.vertically_stretchable = true
+
+    -- Term indicators
+    local term_indicators_frame = tab_tuning_content_right.add {
+        type = "frame",
+        style = "shallow_frame_in_shallow_frame",
+        direction = "vertical",
+    }
+    term_indicators_frame.style.padding = 8
+    for index, term in ipairs(terms) do
+        gui_state.controls[term.key .. "_camera"] =
+            create_term_camera(gui_state, term_indicators_frame, index, term.caption, player.display_scale)
+    end
+
+    -- End
     player.opened = frame
 end
 
@@ -934,8 +1097,16 @@ script.on_event(defines.events.on_player_display_scale_changed, function (event)
 
     for _, viewers in pairs(storage.pid_guis) do
         local gui_state = viewers[player.index]
-        if gui_state and gui_state.controls.graph.valid then
-            gui_state.controls.graph.zoom = player.display_scale
+        if gui_state then
+            local cameras = { gui_state.controls.graph }
+            for _, term in ipairs(terms) do
+                cameras[#cameras + 1] = gui_state.controls[term.key .. "_camera"]
+            end
+            for _, camera in pairs(cameras) do
+                if camera and camera.valid then
+                    camera.zoom = player.display_scale
+                end
+            end
         end
     end
 end)

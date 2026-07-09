@@ -549,12 +549,13 @@ local function process_pid(state, tick)
     state.filtered_derivative = (1 - alpha) * (state.filtered_derivative or 0) + alpha * raw_derivative
     state.prev_pv = pv
 
-    local output = kp * err
-        + ki * state.integral
-        + kd * state.filtered_derivative
+    local p_term = kp * err
+    local i_term = ki * state.integral
+    local d_term = kd * state.filtered_derivative
+    local output = p_term + i_term + d_term
 
     write_output(state, output)
-    return { output = output, pv = pv, sp = sp }
+    return { output = output, pv = pv, sp = sp, p = p_term, i = i_term, d = d_term }
 end
 
 local function drain_pending_undo_redo(tick)
