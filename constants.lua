@@ -35,6 +35,7 @@ C.graph = {
     -- Half-side of the tile square drawn on the hidden graph surface.
     surface_tile_radius = 16,
 }
+C.graph.px_per_tile = 1 / C.graph.tile_size
 
 C.term_indicator = {
     width_px = 110,
@@ -53,6 +54,14 @@ C.terms = {
     { key = "p", caption = {"gui-pid-combinator.term-p"}, },
     { key = "i", caption = {"gui-pid-combinator.term-i"}, },
     { key = "d", caption = {"gui-pid-combinator.term-d"}, },
+}
+
+-- Power status sprite/caption pairs shown in the combinator GUI header.
+C.status_visuals = {
+    [defines.entity_status.no_power]  = { sprite = "utility/status_not_working", caption = {"entity-status.no-power"} },
+    [defines.entity_status.low_power] = { sprite = "utility/status_yellow",       caption = {"entity-status.low-power"} },
+    ghost   = { sprite = "utility/status_yellow",  caption = {"entity-status.ghost"} },
+    default = { sprite = "utility/status_working", caption = {"entity-status.working"} },
 }
 
 C.colors = {

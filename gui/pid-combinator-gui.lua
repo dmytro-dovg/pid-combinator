@@ -6,19 +6,11 @@ local C = require "constants"
 
 local PidCombinatorGui = {}
 
-local colors = C.colors
-local term_indicator = C.term_indicator
-local terms = C.terms
-
-local px_per_tile = 1 / C.graph.tile_size
 local offset = {
     x = (C.graph.viewport.width  / C.graph.tile_size) / 2,
     y = (C.graph.viewport.height / C.graph.tile_size) / 2,
 }
-local size_tiles = {
-    width  = C.graph.viewport.width  / C.graph.tile_size,
-    height = C.graph.viewport.height / C.graph.tile_size,
-}
+local viewport_tile_width = C.graph.viewport.width / C.graph.tile_size
 
 local function map_y(value, maximum_value)
     return -offset.y * (value / maximum_value)
@@ -26,32 +18,22 @@ end
 
 -- Center of a term indicator withing a surface. P=1, I=2, D=3.
 local function term_indicator_center(index)
-    local row_pitch = (term_indicator.height_px + term_indicator.row_gap_px) * px_per_tile
+    local row_pitch = (C.term_indicator.height_px + C.term_indicator.row_gap_px) * C.graph.px_per_tile
     return {
-        x = term_indicator.surface_origin.x,
-        y = term_indicator.surface_origin.y + (index - 1) * row_pitch,
+        x = C.term_indicator.surface_origin.x,
+        y = C.term_indicator.surface_origin.y + (index - 1) * row_pitch,
     }
-end
-
-local function status_visuals(status)
-    local visuals = {
-        [defines.entity_status.no_power] = { sprite = "utility/status_not_working", caption = {"entity-status.no-power"} },
-        [defines.entity_status.low_power] = { sprite = "utility/status_yellow", caption = {"entity-status.low-power"} },
-        ghost = { sprite = "utility/status_yellow", caption = {"entity-status.ghost"} },
-        default = { sprite = "utility/status_working", caption = {"entity-status.working"} },
-    }
-    return visuals[status] or visuals.default
 end
 
 local function update_status(viewers, status)
     for _, gui_state in pairs(viewers) do
         if gui_state.controls.last_status ~= status then
             gui_state.controls.last_status = status
-            local visuals = status_visuals(status)
+            local status_visuals = C.status_visuals[status] or C.status_visuals.default
             local sprite_element = gui_state.controls.status_sprite
             local label_element = gui_state.controls.status_label
-            if sprite_element and sprite_element.valid then sprite_element.sprite = visuals.sprite end
-            if label_element and label_element.valid then label_element.caption = visuals.caption end
+            if sprite_element and sprite_element.valid then sprite_element.sprite = status_visuals.sprite end
+            if label_element and label_element.valid then label_element.caption = status_visuals.caption end
         end
     end
 end
@@ -228,15 +210,15 @@ local function create_term_camera(gui_state, parent, index, caption, initial_zoo
         surface_index = gui_state.graph.surface.index,
         zoom = initial_zoom,
     }
-    camera.style.width  = term_indicator.width_px
-    camera.style.height = term_indicator.height_px
+    camera.style.width  = C.term_indicator.width_px
+    camera.style.height = C.term_indicator.height_px
     return camera
 end
 
 local function draw_term_indicator(surface, player, ttl, center, term_value, bar_color)
-    local inset = px_per_tile
-    local half_w = term_indicator.width_px * 0.5 * px_per_tile
-    local half_h = term_indicator.height_px * 0.5 * px_per_tile
+    local inset = C.graph.px_per_tile
+    local half_w = C.term_indicator.width_px * 0.5 * C.graph.px_per_tile
+    local half_h = C.term_indicator.height_px * 0.5 * C.graph.px_per_tile
     local top = center.y - half_h
     local bottom = center.y + half_h
     local inner_top = top + inset
@@ -248,7 +230,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         left_top     = { center.x - half_w, bottom },
         right_bottom = { center.x + half_w, top },
         filled = true,
-        color = colors.terms.frame,
+        color = C.colors.terms.frame,
         players = { player },
         time_to_live = ttl,
     }
@@ -257,14 +239,14 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         left_top     = { center.x - half_w + inset, inner_bottom },
         right_bottom = { center.x + half_w - inset, inner_top },
         filled = true,
-        color = colors.terms.background,
+        color = C.colors.terms.background,
         players = { player },
         time_to_live = ttl,
     }
 
     -- Value bar
     local max_extent = half_w - inset
-    local raw_extent = term_value * px_per_tile
+    local raw_extent = term_value * C.graph.px_per_tile
     local extent = math.max(-max_extent, math.min(max_extent, raw_extent))
     local bar_left  = math.min(center.x, center.x + extent)
     local bar_right = math.max(center.x, center.x + extent)
@@ -279,14 +261,14 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
     }
 
     -- Tick marks
-    for i = 1, term_indicator.tick_count do
-        local dx = i * term_indicator.tick_step_px * px_per_tile
+    for i = 1, C.term_indicator.tick_count do
+        local dx = i * C.term_indicator.tick_step_px * C.graph.px_per_tile
         for _, tick_x in ipairs({ center.x - dx, center.x + dx }) do
             rendering.draw_line {
                 surface = surface,
                 from = { tick_x, inner_bottom },
                 to   = { tick_x, inner_top },
-                color = colors.terms.tick,
+                color = C.colors.terms.tick,
                 width = 1,
                 players = { player },
                 time_to_live = ttl,
@@ -299,8 +281,8 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         surface = surface,
         from = { center.x, bottom },
         to   = { center.x, top },
-        color = colors.terms.zero,
-        width = term_indicator.zero_line_width,
+        color = C.colors.terms.zero,
+        width = C.term_indicator.zero_line_width,
         players = { player },
         time_to_live = ttl,
     }
@@ -318,7 +300,7 @@ local function plot(player, gui_state, data, tick, value)
     local ttl = PidCombinatorGui.gui_count()
 
     -- Auto-scale y-axis symmetrically around 0. Grow-only.
-    local visible_ticks = math.ceil(size_tiles.width / tiles_per_second) * ticks_per_second
+    local visible_ticks = math.ceil(viewport_tile_width / tiles_per_second) * ticks_per_second
     local peak = gui_state.graph.peak or 0
     for i = data.first, data.last do
         local sample = data[i]
@@ -336,12 +318,12 @@ local function plot(player, gui_state, data, tick, value)
     local axis_maximum = math.max(peak, C.graph.axis_min_scale) * C.graph.axis_margin
 
     -- Vertical gridlines
-    for i = 0, math.floor(size_tiles.width / tiles_per_second) do
+    for i = 0, math.floor(viewport_tile_width / tiles_per_second) do
         rendering.draw_line{
             surface = surface,
             from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y },
             to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y },
-            color = colors.graph.gridline,
+            color = C.colors.graph.gridline,
             width = 1,
             players = { player },
             time_to_live = ttl,
@@ -362,8 +344,8 @@ local function plot(player, gui_state, data, tick, value)
     local step_count = math.floor(axis_maximum / grid_step)
     for step = -step_count, step_count do
         local grid_value = step * grid_step
-        local gridline_color = (step == 0) and colors.graph.prominent_gridline or colors.graph.gridline
-        local text_color = (step == 0) and colors.graph.prominent_gridline_label or colors.graph.gridline_label
+        local gridline_color = (step == 0) and C.colors.graph.prominent_gridline or C.colors.graph.gridline
+        local text_color = (step == 0) and C.colors.graph.prominent_gridline_label or C.colors.graph.gridline_label
         local y = map_y(grid_value, axis_maximum)
         -- Horizontal gridlines
         rendering.draw_line {
@@ -401,7 +383,7 @@ local function plot(player, gui_state, data, tick, value)
                 surface = surface,
                 from = { previous_x, map_y(previous_sample.sp, axis_maximum) },
                 to = { current_x, map_y(current_sample.sp, axis_maximum) },
-                color = colors.graph.sp_line,
+                color = C.colors.graph.sp_line,
                 width = 1,
                 players = { player },
                 time_to_live = ttl,
@@ -413,7 +395,7 @@ local function plot(player, gui_state, data, tick, value)
             surface = surface,
             from = { previous_x, map_y(previous_sample.value, axis_maximum) },
             to = { current_x, map_y(current_sample.value, axis_maximum) },
-            color = colors.graph.pv_line,
+            color = C.colors.graph.pv_line,
             width = 1,
             players = { player },
             time_to_live = ttl,
@@ -424,11 +406,11 @@ local function plot(player, gui_state, data, tick, value)
     -- Skip when the side panel is hidden.
     local side_frame = gui_state.controls.side_frame
     if side_frame and side_frame.valid and side_frame.visible then
-        for index, term in ipairs(terms) do
+        for index, term in ipairs(C.terms) do
             draw_term_indicator(surface, player, ttl,
                 term_indicator_center(index),
                 value[term.key],
-                colors.terms[term.key .. "_bar"])
+                C.colors.terms[term.key .. "_bar"])
         end
     end
 end
@@ -574,7 +556,7 @@ function PidCombinatorGui.display(player, target)
         local entity = target:preview_entity()
         initial_status = entity and entity.valid and entity.status or nil
     end
-    local status_viusuals = status_visuals(initial_status)
+    local status_visuals = C.status_visuals[initial_status] or C.status_visuals.default
 
     local status_flow = contents.add {
         type = "flow",
@@ -590,14 +572,14 @@ function PidCombinatorGui.display(player, target)
     local status_sprite = status_flow.add {
         type = "sprite",
         name = "status_sprite",
-        sprite = status_viusuals.sprite,
+        sprite = status_visuals.sprite,
     }
     status_sprite.style.size = 16
 
     local status_label = status_flow.add {
         type = "label",
         name = "status_label",
-        caption = status_viusuals.caption,
+        caption = status_visuals.caption,
     }
 
     gui_state.controls.status_sprite = status_sprite
@@ -911,7 +893,7 @@ function PidCombinatorGui.display(player, target)
     }
     side_contents.style.padding = 8
 
-    for index, term in ipairs(terms) do
+    for index, term in ipairs(C.terms) do
         gui_state.controls[term.key .. "_camera"] =
             create_term_camera(gui_state, side_contents, index, term.caption, player.display_scale)
     end
@@ -1115,7 +1097,7 @@ script.on_event(defines.events.on_player_display_scale_changed, function (event)
         local gui_state = viewers[player.index]
         if gui_state then
             local cameras = { gui_state.controls.graph }
-            for _, term in ipairs(terms) do
+            for _, term in ipairs(C.terms) do
                 cameras[#cameras + 1] = gui_state.controls[term.key .. "_camera"]
             end
             for _, camera in pairs(cameras) do
