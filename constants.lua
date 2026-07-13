@@ -18,6 +18,20 @@ C.pid = {
     -- Factorio combinator output is int32. The game crashes on out-of-range.
     output_min = -2147483648,
     output_max = 2147483647,
+    rules = {
+        -- Source: https://www.mstarlabs.com/control/znrule.html
+        { name = "Classic Ziegler-Nichols", pf = 0.6, nf = 0.5, df = 0.125 },
+        { name = "Pessen integral rule", pf = 0.7, nf = 0.4, df = 0.15 },
+        { name = "Some overshoot", pf = 0.33, nf = 0.5, df = 0.133 },
+        { name = "No overshoot", pf = 0.2, nf = 0.5, df = 0.33 },
+        { name = "Ziegler-Nichols PI", pf = 0.45, nf = 0.83, df = 0.0 },
+
+        { name = "AMIGO PI", pf = 0.275, nf = 3.35, df = 0.0 },
+        { name = "AMIGO PID", pf = 0.354, nf = 2.0,  df = 0.125 },
+
+        { name = "Custom", pf = 0.14,  nf = 2.0, df = 0.125 },
+        { name = "Arduino PID autotune", pf = 0.6,  nf = 1.2, df = 0.075 },
+    }
 }
 
 C.graph = {
@@ -72,6 +86,7 @@ C.colors = {
         gridline = { 0.1, 0.1, 0.1, 1.0, },
         prominent_gridline_label = { 0.25, 0.25, 0.25, 1.0, },
         gridline_label = { 0.25, 0.25, 0.25, 1.0, },
+        tuning_line = { 0.0, 0.31, 0.275, 1.0, }
     },
     terms = {
         p_bar = { 5, 243, 0, },

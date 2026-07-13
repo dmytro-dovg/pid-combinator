@@ -2,6 +2,7 @@ local List = require "utils.list"
 local SignalPicker = require "gui.signal-picker"
 local ValueSlider = require "gui.value-slider"
 local SettingsTarget = require "gui.settings-target"
+local PidTuning = require "model.pid-tuning"
 local C = require "constants"
 
 local PidCombinatorGui = {}
@@ -36,6 +37,11 @@ local function update_status(viewers, status)
             if label_element and label_element.valid then label_element.caption = status_visuals.caption end
         end
     end
+end
+
+local function format_gain(n)
+    if n == nil then return "" end
+    return string.format("%.4g", n)
 end
 
 local function format_value(n)
@@ -288,7 +294,9 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
     }
 end
 
-local function plot(player, gui_state, data, tick, value)
+local function plot(player, gui_state, state, tick, value)
+    local data = state and state.graph_data
+    if not data then return end
     if not gui_state then return end
     local surface = gui_state.graph.surface
     if not surface or not surface.valid then return end
@@ -371,6 +379,21 @@ local function plot(player, gui_state, data, tick, value)
         }
     end
 
+    -- Tuning taget
+    if PidTuning.is_running(state.tuner) then
+        rendering.draw_line {
+            surface = surface,
+            from = { 0, map_y(state.tuner.target, axis_maximum) },
+            to = { 2 * offset.x, map_y(state.tuner.target, axis_maximum) },
+            gap_length = 0.2,
+            dash_length = 0.2,
+            color = C.colors.graph.tuning_line,
+            width = 1,
+            players = { player },
+            time_to_live = ttl,
+        }
+    end
+
     for i = data.first + 1, data.last do
         local previous_sample = data[i - 1]
         local current_sample = data[i]
@@ -378,7 +401,7 @@ local function plot(player, gui_state, data, tick, value)
         local current_x = 2 * offset.x - (tick - current_sample.tick) / ticks_per_second * tiles_per_second
 
         -- Setpoint line
-        if previous_sample.sp and current_sample.sp then
+        if not PidTuning.is_running(state.tuner) and previous_sample.sp and current_sample.sp then
             rendering.draw_line {
                 surface = surface,
                 from = { previous_x, map_y(previous_sample.sp, axis_maximum) },
@@ -415,13 +438,37 @@ local function plot(player, gui_state, data, tick, value)
     end
 end
 
-function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
+
+function PidCombinatorGui.on_autotune_finalised(unit_number)
+    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
+    if not viewers then return end
+    local state = storage.pid and storage.pid[unit_number]
+    if not state then return end
+    for _, viewer in pairs(viewers) do
+        local controls = viewer.controls
+        for _, comp in ipairs({"p", "i", "d"}) do
+            local views = controls["k" .. comp .. "_views"]
+            local value = state["k" .. comp]
+            if views and value then
+                if views.slider and views.slider.valid then
+                    views.slider.slider_value = value
+                end
+                if views.textfield and views.textfield.valid then
+                    views.textfield.text = format_gain(value)
+                end
+            end
+        end
+    end
+end
+
+function PidCombinatorGui.on_tick(unit_number, state, tick, value)
     local viewers = storage.pid_guis and storage.pid_guis[unit_number]
     if not viewers then return end
 
-    update_status(viewers, status)
+    update_status(viewers, state.entity.status)
     update_value_labels(viewers, value)
 
+    local data = state.graph_data
     if not data or not value then return end
 
     List.pushright(data, { tick = tick, value = value.pv, sp = value.sp })
@@ -435,7 +482,7 @@ function PidCombinatorGui.on_tick(unit_number, status, data, tick, value)
         local n = PidCombinatorGui.gui_count()
         if n > 0 and tick % n == 0 then
             for player_index, gui_state in pairs(viewers) do
-                plot(player_index, gui_state, data, tick, value)
+                plot(player_index, gui_state, state, tick, value)
             end
         end
     end
@@ -786,6 +833,7 @@ function PidCombinatorGui.display(player, target)
             name = "pid_combinator_kp_textfield_" .. unit_number,
         },
     })
+    gui_state.controls.kp_views.textfield.text = format_gain(target:get_k("p"))
 
     -- Integral
     tuning_table.add {
@@ -806,6 +854,7 @@ function PidCombinatorGui.display(player, target)
             name = "pid_combinator_ki_textfield_" .. unit_number,
         },
     })
+    gui_state.controls.ki_views.textfield.text = format_gain(target:get_k("i"))
 
     -- Derivative
     tuning_table.add {
@@ -826,6 +875,7 @@ function PidCombinatorGui.display(player, target)
             name = "pid_combinator_kd_textfield_" .. unit_number,
         },
     })
+    gui_state.controls.kd_views.textfield.text = format_gain(target:get_k("d"))
 
     -- Anti-windup limit
     local anti_windup_label_flow = tuning_table.add {
@@ -857,6 +907,33 @@ function PidCombinatorGui.display(player, target)
     }
     anti_windup_limit_field.style.width = 80
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
+
+    local tab_tuning_content_right = tab_tuning_content.add {
+        type = "flow",
+        direction = "vertical",
+        name = "tab_tuning_content_right",
+    }
+    tab_tuning_content_left.style.horizontally_stretchable = true
+
+    local rule_items = {}
+
+    for _, item in ipairs(C.pid.rules) do
+        table.insert(rule_items, item.name)
+    end
+    local dropdown = tab_tuning_content_right.add {
+        type = "drop-down",
+        name = "pid_combinator_auto_tune_rule_dropdown_" .. unit_number,
+        items = rule_items,
+        selected_index = 1,
+    }
+    gui_state.controls.dropdown = dropdown
+
+    tab_tuning_content_right.add {
+        type = "button",
+        caption = "Auto-tune",
+        name = "pid_combinator_auto_tune_button_" .. unit_number,
+        tooltip = "EXPERIMENTAL",
+    }
 
     -- PID terms side panel
     local side_frame = outer.add {
@@ -913,7 +990,7 @@ script.on_event(defines.events.on_gui_value_changed, function(event)
     if not target or not target:valid() then return end
 
     local value = event.element.slider_value
-    local string_value = tostring(value)
+    local string_value = format_gain(value)
 
     target:set_k(match_component, value)
     local views_key = "k" .. match_component .. "_views"
@@ -1035,9 +1112,9 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
-    local terms_unit_number = tonumber(event.element.name:match("^pid_combinator_terms_button_(%d+)$"))
-    if terms_unit_number then
-        local viewer_state = gui_state(event.player_index, terms_unit_number)
+    local unit_number = tonumber(event.element.name:match("^pid_combinator_terms_button_(%d+)$"))
+    if unit_number then
+        local viewer_state = gui_state(event.player_index, unit_number)
         if not viewer_state then return end
         local side_frame = viewer_state.controls.side_frame
         if not (side_frame and side_frame.valid) then return end
@@ -1046,9 +1123,9 @@ script.on_event(defines.events.on_gui_click, function(event)
         return
     end
 
-    local pin_unit_number = tonumber(event.element.name:match("^pid_combinator_pin_button_(%d+)$"))
-    if pin_unit_number then
-        local viewer_state = gui_state(event.player_index, pin_unit_number)
+    unit_number = tonumber(event.element.name:match("^pid_combinator_pin_button_(%d+)$"))
+    if unit_number then
+        local viewer_state = gui_state(event.player_index, unit_number)
         if not viewer_state then return end
         local player = game.get_player(event.player_index)
         if not player then return end
@@ -1070,9 +1147,21 @@ script.on_event(defines.events.on_gui_click, function(event)
         return
     end
 
-    local matched_unit = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))
-    if not matched_unit then return end
-    PidCombinatorGui.destroy(event.player_index, matched_unit)
+    unit_number = tonumber(event.element.name:match("^pid_combinator_auto_tune_button_(%d+)$"))
+    if unit_number then
+        local state = storage.pid and storage.pid[unit_number]
+        local viewer_state = gui_state(event.player_index, unit_number)
+        if state and viewer_state then
+            local rule = C.pid.rules[viewer_state.controls.dropdown.selected_index]
+            localised_print("Rules " .. serpent.dump(rule))
+            state.tuner = PidTuning.new({target = 80, rule = rule, })
+        end
+        return
+    end
+
+    unit_number = tonumber(event.element.name:match("^pid_combinator_close_button_(%d+)$"))
+    if not unit_number then return end
+    PidCombinatorGui.destroy(event.player_index, unit_number)
 end)
 
 script.on_event(defines.events.on_gui_closed, function(event)

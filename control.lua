@@ -2,6 +2,7 @@ local pid_gui = require "gui.pid-combinator-gui"
 local List = require "utils.list"
 local PidSettings = require "model.pid-settings"
 local SettingsTarget = require "gui.settings-target"
+local PidTuning = require "model.pid-tuning"
 local C = require "constants"
 
 local connector_id = {
@@ -491,6 +492,7 @@ local function process_pid(state, tick)
         state.prev_pv = nil
         state.integral = 0
         state.filtered_derivative = 0
+        state.tuner = nil
         local cb = state.output_entity.get_or_create_control_behavior()
         local section = cb.get_section(1)
         if section then section.clear_slot(1) end
@@ -504,10 +506,6 @@ local function process_pid(state, tick)
 
     local pv = 0
     local sp = 0
-    local kp = state.kp
-    local ki = state.ki
-    local kd = state.kd
-    local anti_windup_limit = state.anti_windup_limit
 
     if red_network then
         if state.signals.pv and state.networks.pv.red then
@@ -527,6 +525,19 @@ local function process_pid(state, tick)
         end
     end
 
+    if PidTuning.is_running(state.tuner) then
+        local tuner_output = PidTuning.loop(state.tuner, pv, tick)
+        write_output(state, tuner_output)
+        return { output = tuner_output, pv = pv, sp = sp, p = 0, i = 0, d = 0 }
+    elseif PidTuning.is_done(state.tuner) then
+        state.kp = state.tuner.result.kp
+        state.ki = state.tuner.result.ki
+        state.kd = state.tuner.result.kd
+        state.tuner = nil
+        pid_gui.on_autotune_finalised(state.entity.unit_number)
+    end
+
+    local anti_windup_limit = state.anti_windup_limit
     local err = sp - pv
 
     local prev_tick = state.prev_tick or (tick - 1)
@@ -547,9 +558,9 @@ local function process_pid(state, tick)
     state.filtered_derivative = (1 - alpha) * (state.filtered_derivative or 0) + alpha * raw_derivative
     state.prev_pv = pv
 
-    local p_term = kp * err
-    local i_term = ki * state.integral
-    local d_term = kd * state.filtered_derivative
+    local p_term = state.kp * err
+    local i_term = state.ki * state.integral
+    local d_term = state.kd * state.filtered_derivative
     local output = p_term + i_term + d_term
 
     write_output(state, output)
@@ -579,7 +590,7 @@ local function on_tick(event)
             state.entity.destroy{ raise_destroy = true }
         else
             local value = process_pid(state, event.tick)
-            pid_gui.on_tick(unit_number, state.entity.status, state.graph_data, event.tick, value)
+            pid_gui.on_tick(unit_number, state, event.tick, value)
         end
     end
 end
