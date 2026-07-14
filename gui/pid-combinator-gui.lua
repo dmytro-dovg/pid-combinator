@@ -900,7 +900,7 @@ function PidCombinatorGui.display(player, target)
 
     local auto_tune_textfield = tuning_table.add {
         type = "textfield",
-        name = "autotune_textfield",
+        name = "pid_combinator_autotune_target_textfield_" .. unit_number,
         text = "80",
         numeric = true,
         allow_decimal = true,
