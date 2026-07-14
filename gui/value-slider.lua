@@ -18,7 +18,7 @@ function ValueSlider.new(parent, config)
         numeric = true,
         allow_decimal = true,
     }
-    textfield.style.width = 48
+    textfield.style.width = 80
     textfield.style.horizontal_align = "center"
     return { textfield = textfield, slider = slider }
 end

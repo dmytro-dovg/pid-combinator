@@ -696,7 +696,6 @@ function PidCombinatorGui.display(player, target)
         tooltip = {"gui-pid-combinator.tab-variables-tooltip"},
     }
 
-
     local tab_tuning = tabbed_pane.add {
         type = "tab",
         caption = {"gui-pid-combinator.tab-tuning"},
@@ -713,7 +712,7 @@ function PidCombinatorGui.display(player, target)
 
     local tab_tuning_content = tabbed_pane.add {
         type = "flow",
-        direction = "horizontal",
+        direction = "vertical",
         name = "tab_tuning_content",
     }
     tab_tuning_content.style.padding = 8
@@ -805,20 +804,15 @@ function PidCombinatorGui.display(player, target)
 
     -- gui_state.controls.time_scale_slider = slider
 
-
-    local tab_tuning_content_left = tab_tuning_content.add {
-        type = "flow",
-        direction = "vertical",
-        name = "tab_tuning_content_left",
-    }
-    tab_tuning_content_left.style.horizontally_stretchable = true
-
-    local tuning_table = tab_tuning_content_left.add {
+    local tuning_table = tab_tuning_content.add {
         type = "table",
         column_count = 2,
         vertical_centering = true,
     }
+    tuning_table.style.horizontally_stretchable = true
     tuning_table.style.right_cell_padding = 8
+    tuning_table.style.column_alignments[1] = "left"
+    tuning_table.style.column_alignments[2] = "right"
 
     -- Proportional
     tuning_table.add {

@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: 2026-xx-xx
+  Features:
+    - Auto-tuning of Kp / Ki / Kd via relay-feedback measurement, with nine selectable rules.
+  Gui:
+    - New auto-tune controls on the Tuning tab: target field, rule dropdown, and Start button.
+    - "Tuning" status shown in the combinator header while a session runs.
+    - Setpoint reference line on the plot follows the auto-tune target while tuning is active.
+    - Kp / Ki / Kd fields formatted to 4 significant figures so long values fit the textfield.
+  Locale:
+    - Added English and Ukrainian strings for the auto-tune controls.
+---------------------------------------------------------------------------------------------------
 Version: 0.1.3
 Date: 2026-07-09
   Features:
