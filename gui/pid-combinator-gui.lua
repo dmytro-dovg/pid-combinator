@@ -904,6 +904,7 @@ function PidCombinatorGui.display(player, target)
         text = "80",
         numeric = true,
         allow_decimal = true,
+        tooltip = {"gui-pid-combinator.autotune-target-tooltip"},
     }
     auto_tune_textfield.style.horizontal_align = "center"
 
@@ -922,6 +923,7 @@ function PidCombinatorGui.display(player, target)
         name = "pid_combinator_auto_tune_rule_dropdown_" .. unit_number,
         items = rule_items,
         selected_index = 1,
+        tooltip = {"gui-pid-combinator.autotune-rule-tooltip"},
     }
     gui_state.controls.dropdown = auto_tune_dropdown
     auto_tune_textfield.style.width = 80
