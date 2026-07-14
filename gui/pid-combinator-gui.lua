@@ -934,6 +934,7 @@ function PidCombinatorGui.display(player, target)
 
     tuning_table.add {
         type = "button",
+        style = "green_button",
         caption = {"gui-pid-combinator.autotune"},
         name = "pid_combinator_auto_tune_button_" .. unit_number,
         tooltip = {"gui-pid-combinator.autotune-tooltip"},
