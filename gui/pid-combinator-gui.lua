@@ -891,6 +891,7 @@ function PidCombinatorGui.display(player, target)
         tooltip = {"gui-pid-combinator.anti-windup-limit-tooltip"},
     }
     anti_windup_limit_field.style.width = 80
+    anti_windup_limit_field.style.horizontal_align = "center"
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
 
     InfoLabel.new(tuning_table,
@@ -904,6 +905,7 @@ function PidCombinatorGui.display(player, target)
         numeric = true,
         allow_decimal = true,
     }
+    auto_tune_textfield.style.horizontal_align = "center"
 
     local rule_items = {}
 
