@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.0
-Date: 2026-xx-xx
+Date: 2026-07-14
   Features:
     - Auto-tuning of Kp / Ki / Kd via relay-feedback measurement, with nine selectable rules.
   Gui:
