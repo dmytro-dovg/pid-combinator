@@ -4,10 +4,12 @@ Date: 2026-07-14
   Features:
     - Auto-tuning of Kp / Ki / Kd via relay-feedback measurement, with nine selectable rules.
   Gui:
-    - New auto-tune controls on the Tuning tab: target field, rule dropdown, and Start button.
+    - New auto-tune controls on the Tuning tab: target field, rule dropdown, "Allow negative output" toggle, and Start button.
     - "Tuning" status shown in the combinator header while a session runs.
     - Setpoint reference line on the plot follows the auto-tune target while tuning is active.
-    - Kp / Ki / Kd fields formatted to 4 significant figures so long values fit the textfield.
+    - Kp / Ki / Kd fields now format to 4 significant figures so long values fit the textfield.
+    - Header status icon now scales with the game's UI display scale.
+    - Tuning table stretches to fill the container width.
   Locale:
     - Added English and Ukrainian strings for the auto-tune controls.
 ---------------------------------------------------------------------------------------------------
