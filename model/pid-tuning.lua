@@ -1,9 +1,6 @@
 local C = require "constants"
 
 local PidTuning = {}
-local function log(m)
-    localised_print("[TUNING]: " .. m)
-end
 
 PidTuning.state = {
     none = "none",
@@ -62,7 +59,6 @@ function PidTuning.loop(session, pv, tick)
     if session.state == PidTuning.state.done then return 0 end
     if session.state == PidTuning.state.none then
         session.state = PidTuning.state.rising
-        log("Starting")
         session.start_tick = tick
         session.t1 = tick
         session.t2 = tick
@@ -70,7 +66,6 @@ function PidTuning.loop(session, pv, tick)
     end
 
     if tick > session.start_tick + session.max_ticks then
-        log("Aborted")
         session.state = PidTuning.state.aborted
         return 0
     end
@@ -83,7 +78,6 @@ function PidTuning.loop(session, pv, tick)
             session.t1 = tick
             session.t_high = session.t1 - session.t2
             session.max_pv = session.target
-            log("Down")
             return session.bias - session.d
         end
         return session.bias + session.d
@@ -99,7 +93,6 @@ function PidTuning.loop(session, pv, tick)
                 local total_t = session.t_high + session.t_low
                 -- Finalising
                 if session.cycles >= (session.settle_cycles + session.target_cycles) then
-                    log("Done")
                     local amplitude = session.max_pv - session.min_pv
                     local ku = (4 * session.d) / (math.pi * amplitude * 0.5)
                     local tu = total_t / C.ticks_per_second
@@ -130,7 +123,6 @@ function PidTuning.loop(session, pv, tick)
             end
             session.min_pv = session.target
             session.cycles = session.cycles + 1
-            log("Up " .. session.cycles)
             return session.bias + session.d
         end
         return session.bias - session.d
