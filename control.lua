@@ -486,13 +486,15 @@ end
 
 local function process_pid(state, tick)
     local entity = state.entity
-
-    if entity.status == defines.entity_status.no_power then
+    local function state_reset()
         state.prev_tick = nil
         state.prev_pv = nil
         state.integral = 0
         state.filtered_derivative = 0
         state.tuner = nil
+    end
+    if entity.status == defines.entity_status.no_power then
+        state_reset()
         local cb = state.output_entity.get_or_create_control_behavior()
         local section = cb.get_section(1)
         if section then section.clear_slot(1) end
@@ -533,7 +535,7 @@ local function process_pid(state, tick)
         state.kp = state.tuner.result.kp
         state.ki = state.tuner.result.ki
         state.kd = state.tuner.result.kd
-        state.tuner = nil
+        state_reset()
         pid_gui.on_autotune_finalised(state.entity.unit_number)
     end
 
