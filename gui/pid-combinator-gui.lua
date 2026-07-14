@@ -893,7 +893,9 @@ function PidCombinatorGui.display(player, target)
     anti_windup_limit_field.style.width = 80
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
 
-    InfoLabel.new(tuning_table, "Auto-tune target", "Target to tune around")
+    InfoLabel.new(tuning_table,
+        {"gui-pid-combinator.autotune-target"},
+        {"gui-pid-combinator.autotune-target-tooltip"})
 
     local auto_tune_textfield = tuning_table.add {
         type = "textfield",
@@ -909,7 +911,9 @@ function PidCombinatorGui.display(player, target)
         table.insert(rule_items, item.name)
     end
 
-    InfoLabel.new(tuning_table, "Auto-tune rule", "Rules for auto-tuning")
+    InfoLabel.new(tuning_table,
+        {"gui-pid-combinator.autotune-rule"},
+        {"gui-pid-combinator.autotune-rule-tooltip"})
 
     local auto_tune_dropdown = tuning_table.add {
         type = "drop-down",
@@ -923,9 +927,9 @@ function PidCombinatorGui.display(player, target)
 
     tuning_table.add {
         type = "button",
-        caption = "Auto-tune",
+        caption = {"gui-pid-combinator.autotune"},
         name = "pid_combinator_auto_tune_button_" .. unit_number,
-        tooltip = "EXPERIMENTAL",
+        tooltip = {"gui-pid-combinator.autotune-tooltip"},
     }
 
     -- PID terms side panel

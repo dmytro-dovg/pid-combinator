@@ -29,7 +29,7 @@ C.pid = {
         -- Cohen and Coon here is the Ku/Tu approximation used by the AutoTunePID
         -- Arduino library, not Cohen and Coon's original method. Source:
         -- https://github.com/lily-osp/AutoTunePID/blob/main/src/AutoTunePID.cpp
-        { name = "Cohen-Coon", pf = 0.8,  nf = 0.8, df = 0.194 },
+        { name = "Cohen-Coon (approx.)", pf = 0.8,  nf = 0.8, df = 0.194 },
         -- Tyreus-Luyben. Source:
         -- https://pages.mtu.edu/~tbco/cm416/tuning_methods.pdf
         { name = "Tyreus-Luyben: PID", pf = 0.454,  nf = 2.2, df = 0.159 },
