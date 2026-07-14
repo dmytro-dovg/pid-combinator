@@ -55,9 +55,18 @@ The **out** pump needs to activate when the PID output is negative, but our cloc
    - Connect its **input** to PID combinator's **output**, and its **output** to the **out** pump.
    - In the **out** pump's GUI, check `Enable if` and set the condition to ![signal-check](docs/signal-checked-green_16.png) **>** ![signal-clock](docs/signal-clock_16.png).
 
-## Tuning tips
+## Auto-tuning
 
-Tune with the combinator's GUI open and pinned. The green line on the graph is the current speed, the light blue line is the setpoint. What you want to see after changing the setpoint is the green line rising to meet the blue line, without wild swings, within roughly 30 seconds.
+The **Tuning** tab has an **Auto-tune** button that measures the platform's response and sets Kp, Ki, Kd for you. Fastest way to get a working baseline.
+
+1. Wait for the platform to reach a speed you'd want to hold. Type that speed into the **Auto-tune target** field - pick something near the middle of the range so speed can swing freely on both sides during measurement.
+2. Pick a rule. If unsure, start with `Astrom-Hagglund: AMIGO PID` (works well on slow systems like platform speed) or `Ziegler-Nichols: No overshoot` (calmer response).
+3. **Allow negative output** - leave off unless you have the two-pump setup from *Further improvements*. On a single-pump setup enabling this will make auto-tuning fail with no result.
+4. Press **Auto-tune**. The system should begin oscillating around the target. The new gains will automatically replace Kp, Ki and Kd values once tuning is done.
+
+## Manual tuning tips
+
+Tune with the combinator's GUI open and pinned. The yellow line on the graph is the current speed, the light blue line is the setpoint. What you want to see after changing the setpoint is the yellow line rising to meet the blue line, without wild swings, within roughly 30 seconds.
 
 A space platform is a slow system: fuel already in the thruster's buffer takes a bit of time to burn off, so every gain change you make takes a while to show up. Be patient - wait 10-20 seconds between tweaks and watch the graph.
 
