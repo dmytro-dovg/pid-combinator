@@ -929,6 +929,18 @@ function PidCombinatorGui.display(player, target)
     auto_tune_textfield.style.width = 80
     gui_state.controls.auto_tune_textfield = auto_tune_textfield
 
+    InfoLabel.new(tuning_table,
+        {"gui-pid-combinator.autotune-bipolar"},
+        {"gui-pid-combinator.autotune-bipolar-tooltip"})
+
+    local bipolar_checkbox = tuning_table.add {
+        type = "checkbox",
+        name = "pid_combinator_autotune_bipolar_checkbox_" .. unit_number,
+        state = false,
+        tooltip = {"gui-pid-combinator.autotune-bipolar-tooltip"},
+    }
+    gui_state.controls.bipolar_checkbox = bipolar_checkbox
+
     -- Empty space to move tuning button to the right
     tuning_table.add {
         type = "empty-widget",
@@ -1169,7 +1181,14 @@ script.on_event(defines.events.on_gui_click, function(event)
         if state and gui_state and gui_state.target.kind ~= "ghost" then
             local rule = C.pid.rules[gui_state.controls.dropdown.selected_index]
             local target = tonumber(gui_state.controls.auto_tune_textfield.text)
-            state.tuner = PidTuning.new({target = target, rule = rule, })
+            local bipolar = gui_state.controls.bipolar_checkbox
+                and gui_state.controls.bipolar_checkbox.valid
+                and gui_state.controls.bipolar_checkbox.state
+            state.tuner = PidTuning.new({
+                target = target,
+                rule = rule,
+                bipolar = bipolar,
+            })
         end
         return
     end

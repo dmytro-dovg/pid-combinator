@@ -15,15 +15,17 @@ local defaults = {
     settle_cycles = 1,
     max_ticks = 60 * C.ticks_per_second,
     rule = C.pid.rules[1],
-    output_min = -60,
+    -- Unipolar by default. Should still work on bipolar setup.
+    -- Having a bipolar default would break on tuning unipolar system.
+    output_min = 0,
     output_max = 60,
     headroom = 0,
 }
 
 function PidTuning.new(opts)
     opts = opts or {}
-    local output_min = opts.output_min or defaults.output_min
     local output_max = opts.output_max or defaults.output_max
+    local output_min = opts.output_min or (opts.bipolar and -output_max) or defaults.output_min
     local headroom = opts.headroom or defaults.headroom
     local mid = (output_min + output_max) / 2
     local half = (output_max - output_min) / 2
