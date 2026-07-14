@@ -21,8 +21,8 @@ C.pid = {
     rules = {
         -- Ziegler and Nichols family. Source:
         -- https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
-        { name = "Ziegler-Nichols: Classic ", pf = 0.6, nf = 0.5, df = 0.125 },
-        { name = "Ziegler-Nichols: PI", pf = 0.45, nf = 0.83, df = 0.0 },
+        { name = "Ziegler-Nichols: Classic PID", pf = 0.6, nf = 0.5, df = 0.125 },
+        { name = "Ziegler-Nichols: Classic PI", pf = 0.45, nf = 0.83, df = 0.0 },
         { name = "Ziegler-Nichols: Pessen integral rule", pf = 0.7, nf = 0.4, df = 0.15 },
         { name = "Ziegler-Nichols: Some overshoot", pf = 0.33, nf = 0.5, df = 0.33 },
         { name = "Ziegler-Nichols: No overshoot", pf = 0.2, nf = 0.5, df = 0.33 },
@@ -32,12 +32,12 @@ C.pid = {
         { name = "Cohen-Coon", pf = 0.8,  nf = 0.8, df = 0.194 },
         -- Tyreus-Luyben. Source:
         -- https://pages.mtu.edu/~tbco/cm416/tuning_methods.pdf
-        { name = "Tyreus-Luyben: PI", pf = 0.3125,  nf = 2.2, df = 0.0 },
         { name = "Tyreus-Luyben: PID", pf = 0.454,  nf = 2.2, df = 0.159 },
+        { name = "Tyreus-Luyben: PI", pf = 0.3125,  nf = 2.2, df = 0.0 },
         -- Astrom and Hagglund AMIGO. Source:
         -- https://skoge.folk.ntnu.no/puublications_others/books/%C3%85strom-2006_Advanced%20PID%20Control/7.A%20Ziegler-Nichold%20Replacement.pdf
-        { name = "Astrom-Hagglund: AMIGO PI",  pf = 0.2749, nf = 3.35, df = 0.0 },
         { name = "Astrom-Hagglund: AMIGO PID", pf = 0.3534, nf = 2.0,  df = 0.125 },
+        { name = "Astrom-Hagglund: AMIGO PI",  pf = 0.2749, nf = 3.35, df = 0.0 },
     }
 }
 
