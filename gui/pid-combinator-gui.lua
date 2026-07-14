@@ -935,6 +935,7 @@ function PidCombinatorGui.display(player, target)
         caption = {"gui-pid-combinator.autotune"},
         name = "pid_combinator_auto_tune_button_" .. unit_number,
         tooltip = {"gui-pid-combinator.autotune-tooltip"},
+        enabled = gui_state.target.kind ~= "ghost",
     }
 
     -- PID terms side panel
@@ -1153,7 +1154,7 @@ script.on_event(defines.events.on_gui_click, function(event)
     if unit_number then
         local state = storage.pid and storage.pid[unit_number]
         local gui_state = gui_state(event.player_index, unit_number)
-        if state and gui_state then
+        if state and gui_state and gui_state.target.kind ~= "ghost" then
             local rule = C.pid.rules[gui_state.controls.dropdown.selected_index]
             local target = tonumber(gui_state.controls.auto_tune_textfield.text)
             state.tuner = PidTuning.new({target = target, rule = rule, })
