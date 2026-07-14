@@ -1,4 +1,5 @@
 local List = require "utils.list"
+local InfoLabel = require "gui.info-label"
 local SignalPicker = require "gui.signal-picker"
 local ValueSlider = require "gui.value-slider"
 local SettingsTarget = require "gui.settings-target"
@@ -878,23 +879,7 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.kd_views.textfield.text = format_gain(target:get_k("d"))
 
     -- Anti-windup limit
-    local anti_windup_label_flow = tuning_table.add {
-        type = "flow",
-        direction = "horizontal",
-    }
-    anti_windup_label_flow.style.vertical_align = "center"
-    anti_windup_label_flow.style.horizontal_spacing = 4
-    anti_windup_label_flow.add {
-        type = "label",
-        caption = {"gui-pid-combinator.anti-windup-limit"},
-        tooltip = {"gui-pid-combinator.anti-windup-limit-tooltip"},
-        style = "bold_label",
-    }
-    anti_windup_label_flow.add {
-        type = "sprite",
-        sprite = "info_no_border",
-        tooltip = {"gui-pid-combinator.anti-windup-limit-tooltip"},
-    }
+    InfoLabel.new(tuning_table, {"gui-pid-combinator.anti-windup-limit"}, {"gui-pid-combinator.anti-windup-limit-tooltip"})
 
     local anti_windup_limit_field = tuning_table.add {
         type = "textfield",
@@ -908,27 +893,35 @@ function PidCombinatorGui.display(player, target)
     anti_windup_limit_field.style.width = 80
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
 
-    local tab_tuning_content_right = tab_tuning_content.add {
-        type = "flow",
-        direction = "vertical",
-        name = "tab_tuning_content_right",
+    InfoLabel.new(tuning_table, "Auto-tune target", "Target to tune around")
+
+    local auto_tune_textfield = tuning_table.add {
+        type = "textfield",
+        name = "autotune_textfield",
+        text = 80,
+        numeric = true,
+        allow_decimal = true,
     }
-    tab_tuning_content_left.style.horizontally_stretchable = true
 
     local rule_items = {}
 
     for _, item in ipairs(C.pid.rules) do
         table.insert(rule_items, item.name)
     end
-    local dropdown = tab_tuning_content_right.add {
+
+    InfoLabel.new(tuning_table, "Auto-tune rule", "Rules for auto-tuning")
+
+    local auto_tune_dropdown = tuning_table.add {
         type = "drop-down",
         name = "pid_combinator_auto_tune_rule_dropdown_" .. unit_number,
         items = rule_items,
         selected_index = 1,
     }
-    gui_state.controls.dropdown = dropdown
+    gui_state.controls.dropdown = auto_tune_dropdown
+    auto_tune_textfield.style.width = 80
+    gui_state.controls.auto_tune_textfield = auto_tune_textfield
 
-    tab_tuning_content_right.add {
+    tuning_table.add {
         type = "button",
         caption = "Auto-tune",
         name = "pid_combinator_auto_tune_button_" .. unit_number,
@@ -1016,9 +1009,9 @@ script.on_event(defines.events.on_gui_value_changed, function(event)
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(event)
-    local mi_unit = tonumber(event.element.name:match("^pid_combinator_anti_windup_limit_textfield_(%d+)$"))
-    if mi_unit then
-        local gui_state = gui_state(event.player_index, mi_unit)
+    local unit_number = tonumber(event.element.name:match("^pid_combinator_anti_windup_limit_textfield_(%d+)$"))
+    if unit_number then
+        local gui_state = gui_state(event.player_index, unit_number)
         if not gui_state or not gui_state.target then return end
         local target = SettingsTarget.resolve(gui_state.target)
         if not target or not target:valid() then return end
@@ -1026,7 +1019,7 @@ script.on_event(defines.events.on_gui_text_changed, function(event)
         if value then
             target:set_anti_windup_limit(value)
             local text = event.element.text
-            broadcast(mi_unit, event.player_index, function(controls)
+            broadcast(unit_number, event.player_index, function(controls)
                 local field = controls.anti_windup_limit_field
                 if field and field.valid then field.text = text end
             end)
@@ -1035,8 +1028,8 @@ script.on_event(defines.events.on_gui_text_changed, function(event)
     end
 
     local match_component, matched_unit = event.element.name:match("^pid_combinator_k([a-z])_textfield_([0-9]+)")
-    local unit_number = tonumber(matched_unit)
-    if not unit_number then return end
+    unit_number = tonumber(matched_unit)
+    if not matched_unit then return end
 
     local gui_state = gui_state(event.player_index, unit_number)
     local value = tonumber(event.element.text)
@@ -1150,11 +1143,11 @@ script.on_event(defines.events.on_gui_click, function(event)
     unit_number = tonumber(event.element.name:match("^pid_combinator_auto_tune_button_(%d+)$"))
     if unit_number then
         local state = storage.pid and storage.pid[unit_number]
-        local viewer_state = gui_state(event.player_index, unit_number)
-        if state and viewer_state then
-            local rule = C.pid.rules[viewer_state.controls.dropdown.selected_index]
-            localised_print("Rules " .. serpent.dump(rule))
-            state.tuner = PidTuning.new({target = 80, rule = rule, })
+        local gui_state = gui_state(event.player_index, unit_number)
+        if state and gui_state then
+            local rule = C.pid.rules[gui_state.controls.dropdown.selected_index]
+            local target = tonumber(gui_state.controls.auto_tune_textfield.text)
+            state.tuner = PidTuning.new({target = target, rule = rule, })
         end
         return
     end
