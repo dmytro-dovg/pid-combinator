@@ -717,6 +717,7 @@ function PidCombinatorGui.display(player, target)
     }
     tab_tuning_content.style.padding = 8
     tab_tuning_content.style.top_padding = 0
+    tab_tuning_content.style.horizontally_stretchable = true
 
     tabbed_pane.add_tab(tab_variables, tab_variables_content)
     tabbed_pane.add_tab(tab_tuning, tab_tuning_content)
@@ -924,6 +925,11 @@ function PidCombinatorGui.display(player, target)
     auto_tune_textfield.style.width = 80
     gui_state.controls.auto_tune_textfield = auto_tune_textfield
 
+    -- Empty space to move tuning button to the right
+    tuning_table.add {
+        type = "empty-widget",
+    }
+
     tuning_table.add {
         type = "button",
         caption = {"gui-pid-combinator.autotune"},
@@ -931,6 +937,13 @@ function PidCombinatorGui.display(player, target)
         tooltip = {"gui-pid-combinator.autotune-tooltip"},
         enabled = gui_state.target.kind ~= "ghost",
     }
+
+    -- Stretch left column
+    for i, child in ipairs(tuning_table.children) do
+        if (i - 1) % 2 == 0 then
+            child.style.horizontally_stretchable = true
+        end
+    end
 
     -- PID terms side panel
     local side_frame = outer.add {
