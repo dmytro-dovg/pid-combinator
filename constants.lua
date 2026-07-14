@@ -79,9 +79,10 @@ C.terms = {
 
 -- Power status sprite/caption pairs shown in the combinator GUI header.
 C.status_visuals = {
-    [defines.entity_status.no_power]  = { sprite = "utility/status_not_working", caption = {"entity-status.no-power"} },
-    [defines.entity_status.low_power] = { sprite = "utility/status_yellow",       caption = {"entity-status.low-power"} },
-    ghost   = { sprite = "utility/status_yellow",  caption = {"entity-status.ghost"} },
+    [defines.entity_status.no_power] = { sprite = "utility/status_not_working", caption = {"entity-status.no-power"} },
+    [defines.entity_status.low_power] = { sprite = "utility/status_yellow", caption = {"entity-status.low-power"} },
+    ghost = { sprite = "utility/status_yellow", caption = {"entity-status.ghost"} },
+    tuning = { sprite = "utility/status_blue", caption = {"gui-pid-combinator.status-tuning"} },
     default = { sprite = "utility/status_working", caption = {"entity-status.working"} },
 }
 

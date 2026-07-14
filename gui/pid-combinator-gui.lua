@@ -466,7 +466,8 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
     local viewers = storage.pid_guis and storage.pid_guis[unit_number]
     if not viewers then return end
 
-    update_status(viewers, state.entity.status)
+    local status = PidTuning.is_running(state.tuner) and "tuning" or state.entity.status
+    update_status(viewers, status)
     update_value_labels(viewers, value)
 
     local data = state.graph_data
@@ -603,6 +604,10 @@ function PidCombinatorGui.display(player, target)
     else
         local entity = target:preview_entity()
         initial_status = entity and entity.valid and entity.status or nil
+        local live_state = storage.pid and storage.pid[unit_number]
+        if live_state and PidTuning.is_running(live_state.tuner) then
+            initial_status = "tuning"
+        end
     end
     local status_visuals = C.status_visuals[initial_status] or C.status_visuals.default
 
@@ -613,16 +618,16 @@ function PidCombinatorGui.display(player, target)
     }
     status_flow.style.vertical_align = "center"
     status_flow.style.left_padding = 12
-    status_flow.style.top_padding = 8
-    status_flow.style.bottom_padding = 8
+    status_flow.style.top_margin = 8
+    status_flow.style.bottom_margin = 8
     status_flow.style.horizontal_spacing = 4
 
     local status_sprite = status_flow.add {
         type = "sprite",
         name = "status_sprite",
         sprite = status_visuals.sprite,
+        style = "mod_updates_status_image",
     }
-    status_sprite.style.size = 16
 
     local status_label = status_flow.add {
         type = "label",
