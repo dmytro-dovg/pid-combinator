@@ -570,7 +570,10 @@ local function process_pid(state, tick)
     local output = p_term + i_term + d_term
 
     write_output(state, output)
-    return { output = output, pv = pv, sp = sp, p = p_term, i = i_term, d = d_term }
+    -- We don't need to build a table when there are no viewers
+    if PidGui.gui_count() > 0 then
+        return { output = output, pv = pv, sp = sp, p = p_term, i = i_term, d = d_term }
+    end
 end
 
 local function drain_pending_undo_redo(tick)
