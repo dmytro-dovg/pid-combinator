@@ -49,14 +49,14 @@ C.graph = {
     axis_min_scale = 50,
     -- Headroom above the max peak.
     axis_margin = 1.1,
-    -- Trim samples older than this from the graph buffer.
-    data_retention_seconds = 25,
     -- Right-side inset for gridline value labels.
     label_right_padding = 0.125, -- tiles
     -- Half-side of the tile square drawn on the hidden graph surface.
     surface_tile_radius = 16,
 }
 C.graph.px_per_tile = 1 / C.graph.tile_size
+-- Trim samples older than this from the graph buffer.
+C.graph.data_retention_seconds = C.graph.viewport.width / C.graph.tile_size
 
 C.term_indicator = {
     width_px = 110,
