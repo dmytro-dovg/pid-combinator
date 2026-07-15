@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.1
+Date: 2026-xx-xx
+  Optimizations:
+    - Output signal writes are skipped when the numeric value is unchanged tick-to-tick.
+    - Output section is toggled active/inactive instead of clearing its slot each tick when no output signal is configured.
+    - Graph samples once every 2 ticks instead of every tick, approximately matching display pixel density.
+    - Graph data retention buffer shortened to match the visible viewport width.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.0
 Date: 2026-07-14
   Features:
