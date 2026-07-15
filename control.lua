@@ -46,16 +46,20 @@ local function write_output(state, value)
     state.pending_connection_changes = {}
 
     if state.signals.output then
-        section.set_slot(1, {
-            value = {
-                type = state.signals.output.type,
-                name = state.signals.output.name,
-                comparator = "=",
-                quality = "normal",
-            },
-            -- Clamp value as the game crashes when it goes out of bounds of int32
-            min = math.min(C.pid.output_max, math.max(C.pid.output_min, math.floor(value))),
-        })
+        -- Clamp value as the game crashes when it goes out of bounds of int32
+        local clamped = math.min(C.pid.output_max, math.max(C.pid.output_min, math.floor(value)))
+        if not state.last_value or clamped ~= state.last_value then 
+            section.set_slot(1, {
+                value = {
+                    type = state.signals.output.type,
+                    name = state.signals.output.name,
+                    comparator = "=",
+                    quality = "normal",
+                },
+                min = clamped,
+            })
+            state.last_value = clamped
+        end
     else
         section.clear_slot(1)
     end
