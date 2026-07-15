@@ -471,6 +471,8 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
 
     local data = state.graph_data
     if not data or not value then return end
+
+    -- Graph renders at 32px per second. 30hz sampling at 60 UPS is close enough.
     if tick % 2 == 0 then
         List.pushright(data, { tick = tick, value = value.pv, sp = value.sp })
     end
