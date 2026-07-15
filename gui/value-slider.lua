@@ -1,5 +1,19 @@
+---@class ValueSliderConfig
+---@field slider { name: string, minimum_value: number, maximum_value: number, value: number, value_step: number? }
+---@field textfield { name: string }
+
+---@class ValueSliderViews
+---@field slider LuaGuiElement
+---@field textfield LuaGuiElement
+
 local ValueSlider = {}
 
+---Adds a horizontal flow with a slider and a numeric textfield that show the
+---same value. The caller is responsible for keeping the two in sync via
+---`on_gui_value_changed` / `on_gui_text_changed` handlers.
+---@param parent LuaGuiElement
+---@param config ValueSliderConfig
+---@return ValueSliderViews
 function ValueSlider.new(parent, config)
     local container = parent.add {
         type = "flow",

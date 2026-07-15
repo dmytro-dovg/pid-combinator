@@ -5,6 +5,34 @@ local SettingsTarget = require "gui.settings-target"
 local PidTuning = require "model.pid-tuning"
 local C = require "constants"
 
+---@class PidPendingConnectionChange
+---@field wire_type WireType
+---@field value boolean
+
+---@class PidGraphSample
+---@field tick uint
+---@field value integer
+---@field sp integer?
+
+---@class PidState: PidSettings
+---@field entity LuaEntity
+---@field output_entity LuaEntity hidden constant combinator entity
+---@field pending_connection_changes PidPendingConnectionChange[]
+---@field integral number
+---@field prev_tick uint? last tick that ran the PID compute
+---@field prev_pv integer? PV on the previous tick
+---@field filtered_derivative number low-pass-filtered derivative
+---@field graph_data List<PidGraphSample>
+---@field tuner PidTuningSession? active autotune session
+
+---@class PidTickResult
+---@field output number
+---@field pv integer
+---@field sp integer
+---@field p number
+---@field i number
+---@field d number
+
 local connector_id = {
     input = {
         red = defines.wire_connector_id.combinator_input_red,
@@ -16,6 +44,8 @@ local connector_id = {
     },
 }
 
+---Wipes transient PID state.
+---@param state PidState
 local function state_reset(state)
     state.prev_tick = nil
     state.prev_pv = nil
@@ -28,12 +58,17 @@ end
 -- Entity functions
 -- ============================================================================
 
+---Toggle section.
+---@param section LuaLogisticSection?
+---@param wanted boolean
 local function set_section_active(section, wanted)
     if section and section.active ~= wanted then
         section.active = wanted
     end
 end
 
+---@param state PidState
+---@param value number
 local function write_output(state, value)
     local cb = state.output_entity.get_or_create_control_behavior()
     local section = cb.get_section(1)
@@ -81,6 +116,10 @@ local function write_output(state, value)
     end
 end
 
+---Creates the hidden constant combinator entity paired with a PID combinator and
+---wires it up to both output connectors.
+---@param entity LuaEntity
+---@return LuaEntity
 local function create_output_for(entity)
     local surface = entity.surface
     local hidden = surface.create_entity{
@@ -100,6 +139,9 @@ local function create_output_for(entity)
     return hidden
 end
 
+---Initialises PidState for new entity.
+---@param entity LuaEntity
+---@param settings PidSettings?
 local function setup_combinator(entity, settings)
     if storage.pid and storage.pid[entity.unit_number] then return end
     local output_entity = create_output_for(entity)
@@ -123,6 +165,9 @@ local function setup_combinator(entity, settings)
     end
 end
 
+---@param surface_index uint
+---@param position MapPosition
+---@return string
 local function position_key(surface_index, position)
     return surface_index .. ":" .. position.x .. ":" .. position.y
 end
@@ -223,17 +268,18 @@ local function on_built(event)
         local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
         entity.operable = false
         setup_combinator(entity, carryover_settings)
-        PidGui.migrate_ghost_viewers(entity)
+        PidGui.migrate_ghost_guis(entity)
     elseif entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
         entity.operable = false
     end
 end
 
-local function close_viewers(unit_number)
-    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
-    if not viewers then return end
+---@param unit_number uint
+local function close_guis(unit_number)
+    local guis = storage.pid_guis and storage.pid_guis[unit_number]
+    if not guis then return end
     local player_indices = {}
-    for player_index, _ in pairs(viewers) do
+    for player_index, _ in pairs(guis) do
         player_indices[#player_indices + 1] = player_index
     end
     for _, player_index in ipairs(player_indices) do
@@ -260,7 +306,7 @@ local function on_removed(event)
     end
 
     if entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
-        close_viewers(entity.unit_number)
+        close_guis(entity.unit_number)
         return
     end
 
@@ -279,7 +325,7 @@ local function on_removed(event)
         end
     end
 
-    close_viewers(entity.unit_number)
+    close_guis(entity.unit_number)
 
     if state and state.output_entity and state.output_entity.valid then
         state.output_entity.destroy()
@@ -393,6 +439,8 @@ local function on_open_input(event)
     PidGui.display(player, target)
 end
 
+---@param event { player_index: uint }
+---@return PidState?
 local function selected_pid_state(event)
     local player = game.get_player(event.player_index)
     if not player then return nil end
@@ -504,6 +552,12 @@ end
 -- PID processing
 -- ============================================================================
 
+---Main per-tick PID compute. Reads PV/SP from the circuit networks, updates
+---integrator and derivative filter, computes output, writes to the actuator.
+---Runs `PidTuning` if a tune is in progress.
+---@param state PidState
+---@param tick uint
+---@return PidTickResult? nil when nothing needs to be reported to the GUI
 local function process_pid(state, tick)
     local entity = state.entity
     if entity.status == defines.entity_status.no_power then
@@ -584,7 +638,7 @@ local function process_pid(state, tick)
     local output = p_term + i_term + d_term
 
     write_output(state, output)
-    -- We don't need to build a table when there are no viewers
+    -- We don't need to build a table when there are no open GUIs
     if PidGui.gui_count() > 0 then
         return { output = output, pv = pv, sp = sp, p = p_term, i = i_term, d = d_term }
     end

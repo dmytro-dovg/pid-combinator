@@ -1,5 +1,21 @@
+---@alias SignalRole "pv"|"sp"|"output"
+
+---@class NetworkFlags
+---@field red boolean
+---@field green boolean
+
+---@class PidSettings
+---@field kp number proportional gain
+---@field ki number integral gain
+---@field kd number derivative gain
+---@field anti_windup_limit number clamp on the accumulated integral term
+---@field signals { pv: SignalID?, sp: SignalID?, output: SignalID? }
+---@field networks { pv: NetworkFlags, sp: NetworkFlags, output: NetworkFlags }
+---@field last_value integer?
+
 local PidSettings = {}
 
+---@return PidSettings
 function PidSettings.defaults()
     return {
         -- PID gains
@@ -21,11 +37,15 @@ function PidSettings.defaults()
     }
 end
 
+---@param signal SignalID?
+---@return SignalID?
 local function copy_signal(signal)
     if not signal then return nil end
     return { name = signal.name, type = signal.type }
 end
 
+---@param source PidSettings
+---@param destination PidSettings
 function PidSettings.copy(source, destination)
     destination.kp = source.kp
     destination.ki = source.ki

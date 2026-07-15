@@ -6,6 +6,40 @@ local SettingsTarget = require "gui.settings-target"
 local PidTuning = require "model.pid-tuning"
 local C = require "constants"
 
+---@class PidGuiControls
+---@field status_sprite LuaGuiElement?
+---@field status_label LuaGuiElement?
+---@field last_status any
+---@field sp_value_label LuaGuiElement?
+---@field pv_value_label LuaGuiElement?
+---@field output_value_label LuaGuiElement?
+---@field kp_views ValueSliderViews?
+---@field ki_views ValueSliderViews?
+---@field kd_views ValueSliderViews?
+---@field anti_windup_limit_field LuaGuiElement?
+---@field auto_tune_textfield LuaGuiElement?
+---@field dropdown LuaGuiElement?
+---@field bipolar_checkbox LuaGuiElement?
+---@field side_frame LuaGuiElement?
+---@field p_camera LuaGuiElement?
+---@field i_camera LuaGuiElement?
+---@field d_camera LuaGuiElement?
+---@field graph LuaGuiElement?
+
+---@class PidGuiState
+---@field frame LuaGuiElement outer window
+---@field graph { surface: LuaSurface, time_scale: number, peak: number? }
+---@field controls PidGuiControls
+---@field target SettingsTargetDescriptor descriptor for live/ghost target
+---@field ghost_origin { surface_index: uint, position: { x: number, y: number } }? tracked for ghost migrations
+
+---@alias PidGuis table<uint, PidGuiState> keyed by player_index
+
+---@class ValueLabels
+---@field sp integer?
+---@field pv integer?
+---@field output number?
+
 local PidCombinatorGui = {}
 
 local offset = {
@@ -14,11 +48,17 @@ local offset = {
 }
 local viewport_tile_width = C.graph.viewport.width / C.graph.tile_size
 
+---Map a data value onto the graph surface's Y coordinate
+---@param value number
+---@param maximum_value number
+---@return number
 local function map_y(value, maximum_value)
     return -offset.y * (value / maximum_value)
 end
 
--- Center of a term indicator within a surface. P=1, I=2, D=3.
+---Center of a term indicator within a surface. P=1, I=2, D=3.
+---@param index integer
+---@return { x: number, y: number }
 local function term_indicator_center(index)
     local row_pitch = (C.term_indicator.height_px + C.term_indicator.row_gap_px) * C.graph.px_per_tile
     return {
@@ -27,8 +67,11 @@ local function term_indicator_center(index)
     }
 end
 
-local function update_status(viewers, status)
-    for _, gui_state in pairs(viewers) do
+---Sync the status sprite + caption on every open GUI of a combinator.
+---@param guis PidGuis
+---@param status any lookup key for `C.status_visuals`
+local function update_status(guis, status)
+    for _, gui_state in pairs(guis) do
         if gui_state.controls.last_status ~= status then
             gui_state.controls.last_status = status
             local status_visuals = C.status_visuals[status] or C.status_visuals.default
@@ -40,11 +83,17 @@ local function update_status(viewers, status)
     end
 end
 
+---4-significant-figure compact format for gain fields.
+---@param n number?
+---@return string
 local function format_gain(n)
     if n == nil then return "" end
     return string.format("%.4g", n)
 end
 
+---Compact format for value labels: whole numbers with k/M/G suffixes.
+---@param n number
+---@return string
 local function format_value(n)
     if n == 0 then return "0" end
     local abs = math.abs(n)
@@ -54,44 +103,59 @@ local function format_value(n)
     return tostring(math.floor(n))
 end
 
+---@param label LuaGuiElement?
+---@param n number?
 local function set_caption(label, n)
     if not label or not label.valid then return end
     label.caption = n and format_value(n) or ""
 end
 
-local function update_value_labels(viewers, value)
-    for _, gui_state in pairs(viewers) do
+---@param guis PidGuis
+---@param value ValueLabels?
+local function update_value_labels(guis, value)
+    for _, gui_state in pairs(guis) do
         set_caption(gui_state.controls.sp_value_label, value and value.sp)
         set_caption(gui_state.controls.pv_value_label, value and value.pv)
         set_caption(gui_state.controls.output_value_label, value and value.output)
     end
 end
 
+---@param player_index uint
+---@param unit_number uint
+---@return PidGuiState?
 local function gui_state(player_index, unit_number)
-    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
-    return viewers and viewers[player_index]
+    local guis = storage.pid_guis and storage.pid_guis[unit_number]
+    return guis and guis[player_index]
 end
 
--- Sync GUI for all viewers
-local function broadcast(unit_number, actor_index, apply)
-    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
-    if not viewers then return end
-    for player_index, viewer in pairs(viewers) do
-        if player_index ~= actor_index and viewer.controls then
-            apply(viewer.controls)
+---Sync a GUI update to every open GUI of a combinator except the initiator's.
+---@param unit_number uint
+---@param player_index uint? initiator's player_index; their GUI is skipped
+---@param apply fun(controls: PidGuiControls)
+local function broadcast(unit_number, player_index, apply)
+    local guis = storage.pid_guis and storage.pid_guis[unit_number]
+    if not guis then return end
+    for pi, gui in pairs(guis) do
+        if pi ~= player_index and gui.controls then
+            apply(gui.controls)
         end
     end
 end
 
+---Destroy every GUI the player has open.
+---@param player LuaPlayer
 function PidCombinatorGui.cleanup(player)
     if not storage.pid_guis then return end
     local unit_numbers = {}
-    for unit_number, viewers in pairs(storage.pid_guis) do
-        if viewers[player.index] then unit_numbers[#unit_numbers + 1] = unit_number end
+    for unit_number, guis in pairs(storage.pid_guis) do
+        if guis[player.index] then unit_numbers[#unit_numbers + 1] = unit_number end
     end
     for _, unit_number in ipairs(unit_numbers) do PidCombinatorGui.destroy(player.index, unit_number) end
 end
 
+---Close a single GUI.
+---@param player_index uint
+---@param unit_number uint
 function PidCombinatorGui.destroy(player_index, unit_number)
     local gui_state = gui_state(player_index, unit_number)
     if not gui_state then return end
@@ -101,10 +165,10 @@ function PidCombinatorGui.destroy(player_index, unit_number)
     if gui_state.graph.surface.valid then
         game.delete_surface(gui_state.graph.surface)
     end
-    local viewers = storage.pid_guis[unit_number]
-    viewers[player_index] = nil
+    local guis = storage.pid_guis[unit_number]
+    guis[player_index] = nil
     storage.pid_guis_count = storage.pid_guis_count - 1
-    if next(viewers) == nil then
+    if next(guis) == nil then
         storage.pid_guis[unit_number] = nil
         -- Remove data when nobody's watching
         if storage.pid and storage.pid[unit_number] then
@@ -113,11 +177,17 @@ function PidCombinatorGui.destroy(player_index, unit_number)
     end
 end
 
+---Total open GUI windows across all players and combinators. Used by
+---the tick handler to gate GUI update work.
+---@return integer
 function PidCombinatorGui.gui_count()
     return storage.pid_guis_count or 0
 end
 
-function PidCombinatorGui.migrate_ghost_viewers(new_live_entity)
+---When a ghost is revived to a live combinator, move any players who had
+---the ghost's GUI open onto the new live entity's GUI.
+---@param new_live_entity LuaEntity
+function PidCombinatorGui.migrate_ghost_guis(new_live_entity)
     if not storage.pid_guis then return end
     local new_unit_number = new_live_entity.unit_number
     if not new_unit_number then return end
@@ -126,11 +196,11 @@ function PidCombinatorGui.migrate_ghost_viewers(new_live_entity)
     local new_position_y = new_live_entity.position.y
 
     local migrations = {}
-    for ghost_unit_number, viewers in pairs(storage.pid_guis) do
+    for ghost_unit_number, guis in pairs(storage.pid_guis) do
         if ghost_unit_number ~= new_unit_number then
-            for player_index, viewer_state in pairs(viewers) do
-                local ghost_origin = viewer_state.ghost_origin
-                if viewer_state.target and viewer_state.target.kind == "ghost" and ghost_origin
+            for player_index, gui in pairs(guis) do
+                local ghost_origin = gui.ghost_origin
+                if gui.target and gui.target.kind == "ghost" and ghost_origin
                     and ghost_origin.surface_index == new_surface_index
                     and ghost_origin.position.x == new_position_x
                     and ghost_origin.position.y == new_position_y then
@@ -152,11 +222,14 @@ function PidCombinatorGui.migrate_ghost_viewers(new_live_entity)
     end
 end
 
+---@return integer
 local function next_surface_id()
     storage.next_graph_surface_id = (storage.next_graph_surface_id or 0) + 1
     return storage.next_graph_surface_id
 end
 
+---Create the private graph-rendering surface for a GUI window.
+---@return LuaSurface
 local function create_surface()
     local surface_name = "graph_surface_" .. next_surface_id()
     local surface_size = { width = 1, height = 1, }
@@ -182,6 +255,10 @@ local function create_surface()
     return surface
 end
 
+---@param gui_state PidGuiState
+---@param parent LuaGuiElement
+---@param initial_zoom number
+---@return LuaGuiElement graph_camera the camera element pointed at the graph surface
 local function create_graph(gui_state, parent, initial_zoom)
     local graph_camera = parent.add{
         type = "camera",
@@ -196,6 +273,12 @@ local function create_graph(gui_state, parent, initial_zoom)
     return graph_camera
 end
 
+---@param gui_state PidGuiState
+---@param parent LuaGuiElement
+---@param index integer 1-based term index (P=1, I=2, D=3)
+---@param caption LocalisedString
+---@param initial_zoom number
+---@return LuaGuiElement
 local function create_term_camera(gui_state, parent, index, caption, initial_zoom)
     local container = parent.add {
         type = "flow",
@@ -222,6 +305,14 @@ local function create_term_camera(gui_state, parent, index, caption, initial_zoo
     return camera
 end
 
+---Draw a line-graph for a single PID term (P, I, or D) onto
+---the private graph surface.
+---@param surface LuaSurface
+---@param player LuaPlayer
+---@param ttl uint frames the drawing should live for
+---@param center { x: number, y: number }
+---@param term_value number? current signed value of the term
+---@param bar_color number[]
 local function draw_term_indicator(surface, player, ttl, center, term_value, bar_color)
     local inset = C.graph.px_per_tile
     local half_w = C.term_indicator.width_px * 0.5 * C.graph.px_per_tile
@@ -295,6 +386,13 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
     }
 end
 
+---Render one frame of the graph (SP/PV lines, gridlines, axis labels, and
+---the PID term indicators) onto the private surface for one player.
+---@param player LuaPlayer
+---@param gui_state PidGuiState
+---@param state PidState
+---@param tick uint
+---@param value PidTickResult
 local function plot(player, gui_state, state, tick, value)
     local data = state and state.graph_data
     if not data then return end
@@ -442,13 +540,16 @@ local function plot(player, gui_state, state, tick, value)
 end
 
 
+---Called by control.lua when an autotune session completes. Refreshes
+---kp/ki/kd sliders and textfields on every open GUI.
+---@param unit_number uint
 function PidCombinatorGui.on_autotune_finalised(unit_number)
-    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
-    if not viewers then return end
+    local guis = storage.pid_guis and storage.pid_guis[unit_number]
+    if not guis then return end
     local state = storage.pid and storage.pid[unit_number]
     if not state then return end
-    for _, viewer in pairs(viewers) do
-        local controls = viewer.controls
+    for _, gui in pairs(guis) do
+        local controls = gui.controls
         for _, comp in ipairs({"p", "i", "d"}) do
             local views = controls["k" .. comp .. "_views"]
             local value = state["k" .. comp]
@@ -464,13 +565,18 @@ function PidCombinatorGui.on_autotune_finalised(unit_number)
     end
 end
 
+---Per-tick GUI update.
+---@param unit_number uint
+---@param state PidState
+---@param tick uint
+---@param value PidTickResult
 function PidCombinatorGui.on_tick(unit_number, state, tick, value)
-    local viewers = storage.pid_guis and storage.pid_guis[unit_number]
-    if not viewers then return end
+    local guis = storage.pid_guis and storage.pid_guis[unit_number]
+    if not guis then return end
 
     local status = PidTuning.is_running(state.tuner) and "tuning" or state.entity.status
-    update_status(viewers, status)
-    update_value_labels(viewers, value)
+    update_status(guis, status)
+    update_value_labels(guis, value)
 
     local data = state.graph_data
     if not data or not value then return end
@@ -487,13 +593,16 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
         -- With every added GUI reduce sample rate to protect game UPS
         local n = PidCombinatorGui.gui_count()
         if n > 0 and tick % n == 0 then
-            for player_index, gui_state in pairs(viewers) do
+            for player_index, gui_state in pairs(guis) do
                 plot(player_index, gui_state, state, tick, value)
             end
         end
     end
 end
 
+---Open or restore a combinator GUI for a player.
+---@param player LuaPlayer
+---@param target SettingsTarget
 function PidCombinatorGui.display(player, target)
     local unit_number = target:unit_number()
     storage.pid_guis = storage.pid_guis or {}
@@ -1124,9 +1233,9 @@ end)
 script.on_event(defines.events.on_gui_click, function(event)
     local unit_number = tonumber(event.element.name:match("^pid_combinator_terms_button_(%d+)$"))
     if unit_number then
-        local viewer_state = gui_state(event.player_index, unit_number)
-        if not viewer_state then return end
-        local side_frame = viewer_state.controls.side_frame
+        local gui_state = gui_state(event.player_index, unit_number)
+        if not gui_state then return end
+        local side_frame = gui_state.controls.side_frame
         if not (side_frame and side_frame.valid) then return end
         side_frame.visible = not side_frame.visible
         event.element.toggled = side_frame.visible
@@ -1135,23 +1244,23 @@ script.on_event(defines.events.on_gui_click, function(event)
 
     unit_number = tonumber(event.element.name:match("^pid_combinator_pin_button_(%d+)$"))
     if unit_number then
-        local viewer_state = gui_state(event.player_index, unit_number)
-        if not viewer_state then return end
+        local gui_state = gui_state(event.player_index, unit_number)
+        if not gui_state then return end
         local player = game.get_player(event.player_index)
         if not player then return end
         event.element.toggled = not event.element.toggled
         event.element.sprite = event.element.toggled and "pid-combinator-pin-toggled" or "pid-combinator-pin"
-        local close_button = viewer_state.controls.close_button
+        local close_button = gui_state.controls.close_button
         if close_button and close_button.valid then
             close_button.tooltip = event.element.toggled and {"gui.close"} or {"gui.close-instruction"}
         end
         if event.element.toggled then
-            if player.opened == viewer_state.frame then
+            if player.opened == gui_state.frame then
                 player.opened = nil
             end
         else
-            if viewer_state.frame and viewer_state.frame.valid then
-                player.opened = viewer_state.frame
+            if gui_state.frame and gui_state.frame.valid then
+                player.opened = gui_state.frame
             end
         end
         return
@@ -1185,9 +1294,9 @@ script.on_event(defines.events.on_gui_closed, function(event)
     if not event.element or not event.element.valid then return end
     local unit_number = tonumber(event.element.name:match("^pid_combinator_frame_%d+_(%d+)$"))
     if not unit_number then return end
-    local viewer_state = gui_state(event.player_index, unit_number)
-    if not viewer_state then return end
-    local pin_button = viewer_state.controls.pin_button
+    local gui_state = gui_state(event.player_index, unit_number)
+    if not gui_state then return end
+    local pin_button = gui_state.controls.pin_button
     if pin_button and pin_button.valid and pin_button.toggled then
         return
     end
@@ -1199,8 +1308,8 @@ script.on_event(defines.events.on_player_display_scale_changed, function (event)
     if not player then return end
     if not storage.pid_guis then return end
 
-    for _, viewers in pairs(storage.pid_guis) do
-        local gui_state = viewers[player.index]
+    for _, guis in pairs(storage.pid_guis) do
+        local gui_state = guis[player.index]
         if gui_state then
             local cameras = { gui_state.controls.graph }
             for _, term in ipairs(C.terms) do

@@ -1,6 +1,26 @@
+---@class SignalPickerConfig
+---@field title_tooltip LocalisedString?
+---@field r_checkbox_name string
+---@field g_checkbox_name string
+---@field choose_elem_button_name string
+---@field r_state boolean
+---@field g_state boolean
+---@field r_tooltip LocalisedString?
+---@field g_tooltip LocalisedString?
+---@field signal SignalID?
+
+---@class SignalPickerViews
+---@field value_label LuaGuiElement
+---@field r_checkbox LuaGuiElement
+---@field g_checkbox LuaGuiElement
+---@field elem_button LuaGuiElement
 
 local SignalPicker = {}
 
+---@param parent LuaGuiElement
+---@param title LocalisedString|string
+---@param config SignalPickerConfig
+---@return SignalPickerViews
 function SignalPicker.new(parent, title, config)
     local signal_outer_container = parent.add {
         type = "flow",

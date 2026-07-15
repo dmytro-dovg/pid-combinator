@@ -1,7 +1,35 @@
 local PidSettings = require "model.pid-settings"
 
+---@alias KComponent "p"|"i"|"d"
+---@alias WireType "red"|"green"
+---@alias SettingsTargetKind "live"|"ghost"
+
+---@alias SettingsTargetDescriptor
+---| { kind: "live", unit_number: uint }
+---| { kind: "ghost", entity: LuaEntity }
+
+---A unified read/write interface over either a live combinator's storage
+---state or a ghost's tag payload. Descriptors are safe to persist.
+---Instances are rebuilt via `SettingsTarget.resolve` on load.
+---@class SettingsTarget
+---@field valid fun(self: SettingsTarget): boolean
+---@field descriptor fun(self: SettingsTarget): SettingsTargetDescriptor
+---@field unit_number fun(self: SettingsTarget): uint?
+---@field preview_entity fun(self: SettingsTarget): LuaEntity?
+---@field get_k fun(self: SettingsTarget, component: KComponent): number?
+---@field set_k fun(self: SettingsTarget, component: KComponent, value: number)
+---@field get_anti_windup_limit fun(self: SettingsTarget): number?
+---@field set_anti_windup_limit fun(self: SettingsTarget, value: number)
+---@field get_signal fun(self: SettingsTarget, role: SignalRole): SignalID?
+---@field set_signal fun(self: SettingsTarget, role: SignalRole, value: SignalID?)
+---@field get_network fun(self: SettingsTarget, role: SignalRole): NetworkFlags?
+---@field set_network fun(self: SettingsTarget, role: SignalRole, wire_type: WireType, value: boolean)
+---@field queue_output_connection_change fun(self: SettingsTarget, wire_type: WireType, value: boolean)
+
 local SettingsTarget = {}
 
+---@class Live: SettingsTarget
+---@field unit uint
 local Live = {}
 Live.__index = Live
 
@@ -77,6 +105,8 @@ function Live:queue_output_connection_change(wire_type, value)
     table.insert(state.pending_connection_changes, { wire_type = wire_type, value = value })
 end
 
+---@class Ghost: SettingsTarget
+---@field entity LuaEntity
 local Ghost = {}
 Ghost.__index = Ghost
 
@@ -154,15 +184,23 @@ end
 function Ghost:queue_output_connection_change(_wire_type, _value)
 end
 
+---@param unit_number uint
+---@return Live
 function SettingsTarget.live(unit_number)
     return setmetatable({ unit = unit_number }, Live)
 end
 
+---@param entity LuaEntity
+---@return Ghost
 function SettingsTarget.ghost(entity)
     return setmetatable({ entity = entity }, Ghost)
 end
 
--- Rebuilt from a stored descriptor because metatables/closures don't survive save/load in storage.
+---Rebuilds a target from a stored descriptor. Metatables/closures don't
+---survive save/load in storage, so descriptors are the persistent form and
+---this reconstructs the live/ghost instance.
+---@param descriptor SettingsTargetDescriptor?
+---@return SettingsTarget?
 function SettingsTarget.resolve(descriptor)
     if not descriptor then return nil end
     if descriptor.kind == "live" then

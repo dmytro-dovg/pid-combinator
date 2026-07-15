@@ -1,3 +1,15 @@
+---@class Constants
+---@field debug { show_surface: boolean, show_invisible_frame: boolean }
+---@field ticks_per_second integer
+---@field seconds_per_tick number
+---@field undo_redo_max_age_ticks integer
+---@field pid { derivative_lpf_alpha: number, dt_clamp_seconds: number, output_min: integer, output_max: integer, rules: TuningRule[] }
+---@field graph { tile_size: integer, viewport: { width: integer, height: integer }, preview: { width: integer, height: integer }, axis_min_scale: number, axis_margin: number, label_right_padding: number, surface_tile_radius: integer, px_per_tile: number, data_retention_seconds: number }
+---@field term_indicator { width_px: integer, height_px: integer, tick_step_px: integer, tick_count: integer, zero_line_width: integer, row_gap_px: integer, surface_origin: { x: integer, y: integer } }
+---@field terms { key: KComponent, caption: LocalisedString }[]
+---@field status_visuals table<any, { sprite: string, caption: LocalisedString }>
+---@field colors { graph: table<string, number[]>, terms: table<string, number[]> }
+
 local C = {}
 
 C.debug = {

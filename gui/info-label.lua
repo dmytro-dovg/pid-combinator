@@ -1,5 +1,9 @@
 local InfoLabel = {}
 
+---A label with a bold caption and an "info" sprite that shares the tooltip.
+---@param parent LuaGuiElement
+---@param caption LocalisedString|string
+---@param tooltip LocalisedString|string
 function InfoLabel.new(parent, caption, tooltip)
     local flow = parent.add {
         type = "flow",

@@ -1,5 +1,53 @@
 local C = require "constants"
 
+---@alias PidTuningState "none"|"rising"|"falling"|"done"|"aborted"
+
+---@class TuningRule
+---@field name string
+---@field pf number Kp multiplier applied to Ku
+---@field nf number Ti multiplier applied to Tu
+---@field df number Td multiplier applied to Tu
+
+---@class TuningResult
+---@field kp number
+---@field ki number
+---@field kd number
+
+---@class PidTuningSession
+---@field state PidTuningState
+---@field target number setpoint the relay oscillates around
+---@field target_cycles integer measurement cycles after settle
+---@field settle_cycles integer leading cycles discarded
+---@field start_tick uint
+---@field max_ticks integer session timeout
+---@field rule TuningRule
+---@field output_min integer
+---@field output_max integer
+---@field headroom integer bias clamp headroom on each side
+---@field cycles integer completed cycles so far
+---@field bias number DC offset of the relay
+---@field d number relay half-swing
+---@field d_cap number cap on `d` (never grows past initial value)
+---@field t_high uint length of the current/last "high" half-period
+---@field t_low uint length of the current/last "low" half-period
+---@field t1 uint tick of last rising->falling transition
+---@field t2 uint tick of last falling->rising transition
+---@field max_pv integer max PV observed since last reset
+---@field min_pv integer min PV observed since last reset
+---@field result TuningResult populated at the "done" state
+
+---@class PidTuningOptions
+---@field target number? SP the relay oscillates around
+---@field target_cycles integer?
+---@field settle_cycles integer?
+---@field max_ticks integer?
+---@field rule TuningRule?
+---@field output_min integer? explicit lower actuator bound
+---@field output_max integer? explicit upper actuator bound
+---@field bipolar boolean? if true and output_min not given, uses -output_max
+---@field headroom integer?
+---@field initial_d number?
+
 local PidTuning = {}
 
 PidTuning.state = {
@@ -22,6 +70,8 @@ local defaults = {
     headroom = 0,
 }
 
+---@param opts PidTuningOptions
+---@return PidTuningSession
 function PidTuning.new(opts)
     opts = opts or {}
     local output_max = opts.output_max or defaults.output_max
@@ -57,6 +107,11 @@ function PidTuning.new(opts)
     }
 end
 
+---Advance the state machine one tick.
+---@param session PidTuningSession
+---@param pv integer current process variable reading
+---@param tick uint current game tick
+---@return integer output value to write to the actuator
 function PidTuning.loop(session, pv, tick)
     if session.state == PidTuning.state.done then return 0 end
     if session.state == PidTuning.state.none then
@@ -131,10 +186,14 @@ function PidTuning.loop(session, pv, tick)
     end
 end
 
+---@param session PidTuningSession?
+---@return boolean
 function PidTuning.is_running(session)
     return session and session.state ~= PidTuning.state.done and session.state ~= PidTuning.state.aborted
 end
 
+---@param session PidTuningSession
+---@return boolean
 function PidTuning.is_done(session)
     return session.state == PidTuning.state.done
 end
