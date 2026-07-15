@@ -44,6 +44,8 @@ function PidSettings.copy(source, destination)
         sp  = { red = source.networks.sp.red, green = source.networks.sp.green },
         output = { red = source.networks.output.red, green = source.networks.output.green },
     }
+
+    destination.last_value = nil
 end
 
 return PidSettings

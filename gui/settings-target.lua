@@ -54,7 +54,9 @@ end
 
 function Live:set_signal(role, value)
     local state = self:_state()
-    if state then state.signals[role] = value end
+    if not state then return end
+    state.signals[role] = value
+    if role == "output" then state.last_value = nil end
 end
 
 function Live:get_network(role)

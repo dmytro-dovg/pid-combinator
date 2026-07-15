@@ -16,39 +16,55 @@ local connector_id = {
     },
 }
 
+local function state_reset(state)
+    state.prev_tick = nil
+    state.prev_pv = nil
+    state.integral = 0
+    state.filtered_derivative = 0
+    state.tuner = nil
+end
+
 -- ============================================================================
 -- Entity functions
 -- ============================================================================
+
+local function set_section_active(section, wanted)
+    if section and section.active ~= wanted then
+        section.active = wanted
+    end
+end
 
 local function write_output(state, value)
     local cb = state.output_entity.get_or_create_control_behavior()
     local section = cb.get_section(1)
     if not section then
         section = cb.add_section("output")
-        section.active = true
     end
 
     local pending_changes = state.pending_connection_changes or {}
-    for _, change in pairs(pending_changes) do
-        local origin = defines.wire_origin.script
-        local wire_type = change.wire_type
-        local pid_combinator_connector = state.entity.get_wire_connector(connector_id.output[wire_type], false)
-        local output_combinator_connector = state.output_entity.get_wire_connector(connector_id.input[wire_type], false)
+    if next(pending_changes) then
+        for _, change in pairs(pending_changes) do
+            local origin = defines.wire_origin.script
+            local wire_type = change.wire_type
+            local pid_combinator_connector = state.entity.get_wire_connector(connector_id.output[wire_type], false)
+            local output_combinator_connector = state.output_entity.get_wire_connector(connector_id.input[wire_type], false)
 
-        if change.value then
-            pid_combinator_connector.connect_to(output_combinator_connector, false, origin)
-        else
-            pid_combinator_connector.disconnect_from(output_combinator_connector, origin)
+            if change.value then
+                pid_combinator_connector.connect_to(output_combinator_connector, false, origin)
+            else
+                pid_combinator_connector.disconnect_from(output_combinator_connector, origin)
+            end
         end
+
+        -- Empty list since changes were applied
+        state.pending_connection_changes = {}
     end
 
-    -- Empty list since changes were applied
-    state.pending_connection_changes = {}
-
     if state.signals.output then
+        set_section_active(section, true)
         -- Clamp value as the game crashes when it goes out of bounds of int32
         local clamped = math.min(C.pid.output_max, math.max(C.pid.output_min, math.floor(value)))
-        if not state.last_value or clamped ~= state.last_value then 
+        if clamped ~= state.last_value then
             section.set_slot(1, {
                 value = {
                     type = state.signals.output.type,
@@ -61,7 +77,7 @@ local function write_output(state, value)
             state.last_value = clamped
         end
     else
-        section.clear_slot(1)
+        set_section_active(section, false)
     end
 end
 
@@ -490,18 +506,11 @@ end
 
 local function process_pid(state, tick)
     local entity = state.entity
-    local function state_reset()
-        state.prev_tick = nil
-        state.prev_pv = nil
-        state.integral = 0
-        state.filtered_derivative = 0
-        state.tuner = nil
-    end
     if entity.status == defines.entity_status.no_power then
-        state_reset()
+        state_reset(state)
         local cb = state.output_entity.get_or_create_control_behavior()
         local section = cb.get_section(1)
-        if section then section.clear_slot(1) end
+        set_section_active(section, false)
         return
     end
 
@@ -531,16 +540,21 @@ local function process_pid(state, tick)
         end
     end
 
-    if PidTuning.is_running(state.tuner) then
-        local tuner_output = PidTuning.loop(state.tuner, pv, tick)
-        write_output(state, tuner_output)
-        return { output = tuner_output, pv = pv, sp = sp, p = 0, i = 0, d = 0 }
-    elseif PidTuning.is_done(state.tuner) then
-        state.kp = state.tuner.result.kp
-        state.ki = state.tuner.result.ki
-        state.kd = state.tuner.result.kd
-        state_reset()
-        PidGui.on_autotune_finalised(state.entity.unit_number)
+    if state.tuner then
+        if PidTuning.is_running(state.tuner) then
+            local tuner_output = PidTuning.loop(state.tuner, pv, tick)
+            write_output(state, tuner_output)
+            if PidGui.gui_count() > 0 then
+                return { output = tuner_output, pv = pv, sp = sp, p = 0, i = 0, d = 0 }
+            end
+            return
+        elseif PidTuning.is_done(state.tuner) then
+            state.kp = state.tuner.result.kp
+            state.ki = state.tuner.result.ki
+            state.kd = state.tuner.result.kd
+            state_reset(state)
+            PidGui.on_autotune_finalised(state.entity.unit_number)
+        end
     end
 
     local anti_windup_limit = state.anti_windup_limit
@@ -599,7 +613,9 @@ local function on_tick(event)
             state.entity.destroy{ raise_destroy = true }
         else
             local value = process_pid(state, event.tick)
-            PidGui.on_tick(unit_number, state, event.tick, value)
+            if value then
+                PidGui.on_tick(unit_number, state, event.tick, value)
+            end
         end
     end
 end

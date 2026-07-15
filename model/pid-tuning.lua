@@ -136,7 +136,7 @@ function PidTuning.is_running(session)
 end
 
 function PidTuning.is_done(session)
-    return session and session.state == PidTuning.state.done
+    return session.state == PidTuning.state.done
 end
 
 return PidTuning
