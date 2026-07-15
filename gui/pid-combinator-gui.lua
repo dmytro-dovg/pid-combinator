@@ -471,9 +471,9 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
 
     local data = state.graph_data
     if not data or not value then return end
-
-    List.pushright(data, { tick = tick, value = value.pv, sp = value.sp })
-
+    if tick % 2 == 0 then
+        List.pushright(data, { tick = tick, value = value.pv, sp = value.sp })
+    end
     if List.length(data) > 1 then
         -- Trim older data points
         while List.length(data) > 0 and (tick - data[data.first].tick) * C.seconds_per_tick > C.graph.data_retention_seconds do
