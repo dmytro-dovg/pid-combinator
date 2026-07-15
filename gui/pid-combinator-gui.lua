@@ -327,15 +327,18 @@ local function plot(player, gui_state, state, tick, value)
 
     -- Vertical gridlines
     for i = 0, math.floor(viewport_tile_width / tiles_per_second) do
-        rendering.draw_line{
-            surface = surface,
-            from = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, offset.y },
-            to = { 2 * offset.x - (tick_grid_offset + i) * tiles_per_second, -offset.y },
-            color = C.colors.graph.gridline,
-            width = 1,
-            players = { player },
-            time_to_live = ttl,
-        }
+        local x = 2 * offset.x - (tick_grid_offset + i) * tiles_per_second
+        if x >= 0 then
+            rendering.draw_line{
+                surface = surface,
+                from = { x, offset.y },
+                to = { x, -offset.y },
+                color = C.colors.graph.gridline,
+                width = 1,
+                players = { player },
+                time_to_live = ttl,
+            }
+        end
     end
 
     -- Snap the gridline step to 1/2/5 * 10^n so lines land on round values
