@@ -303,13 +303,12 @@ local function plot(player, gui_state, state, tick, value)
     if not surface or not surface.valid then return end
 
     local tiles_per_second = gui_state.graph.time_scale
-    local ticks_per_second = C.ticks_per_second
-    local tick_grid_offset = (tick % ticks_per_second) / ticks_per_second
+    local tick_grid_offset = (tick % C.ticks_per_second) * C.seconds_per_tick
     -- With every added GUI reduce sample rate to protect game UPS
     local ttl = PidCombinatorGui.gui_count()
 
     -- Auto-scale y-axis symmetrically around 0. Grow-only.
-    local visible_ticks = math.ceil(viewport_tile_width / tiles_per_second) * ticks_per_second
+    local visible_ticks = math.ceil(viewport_tile_width / tiles_per_second) * C.ticks_per_second
     local peak = gui_state.graph.peak or 0
     for i = data.first, data.last do
         local sample = data[i]
@@ -398,8 +397,8 @@ local function plot(player, gui_state, state, tick, value)
     for i = data.first + 1, data.last do
         local previous_sample = data[i - 1]
         local current_sample = data[i]
-        local previous_x = 2 * offset.x - (tick - previous_sample.tick) / ticks_per_second * tiles_per_second
-        local current_x = 2 * offset.x - (tick - current_sample.tick) / ticks_per_second * tiles_per_second
+        local previous_x = 2 * offset.x - (tick - previous_sample.tick) * C.seconds_per_tick * tiles_per_second
+        local current_x = 2 * offset.x - (tick - current_sample.tick) * C.seconds_per_tick * tiles_per_second
 
         -- Setpoint line
         if not PidTuning.is_running(state.tuner) and previous_sample.sp and current_sample.sp then
@@ -477,7 +476,7 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
 
     if List.length(data) > 1 then
         -- Trim older data points
-        while List.length(data) > 0 and (tick - data[data.first].tick) / C.ticks_per_second > C.graph.data_retention_seconds do
+        while List.length(data) > 0 and (tick - data[data.first].tick) * C.seconds_per_tick > C.graph.data_retention_seconds do
             List.popleft(data)
         end
         -- With every added GUI reduce sample rate to protect game UPS

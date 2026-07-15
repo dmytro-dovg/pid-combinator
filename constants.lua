@@ -6,6 +6,7 @@ C.debug = {
 }
 
 C.ticks_per_second = 60
+C.seconds_per_tick = 1 / 60
 
 -- Drop undo/redo entries older than this.
 C.undo_redo_max_age_ticks = 60 * 60 * 60 -- 1 hour

@@ -543,7 +543,7 @@ local function process_pid(state, tick)
     local err = sp - pv
 
     local prev_tick = state.prev_tick or (tick - 1)
-    local dt = (tick - prev_tick) / C.ticks_per_second
+    local dt = (tick - prev_tick) * C.seconds_per_tick
     if dt > C.pid.dt_clamp_seconds then dt = C.pid.dt_clamp_seconds end
     -- Safeguard against abnormal ticks
     if dt <= 0 then state.prev_tick = tick; return end
