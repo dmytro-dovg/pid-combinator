@@ -792,18 +792,6 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.output_value_label = output_picker.value_label
     gui_state.controls.output_picker = output_picker
 
-    -- local slider = tab_variables_content_left.add {
-    --     type = "slider",
-    --     name = "pid_combinator_time_scale_slider_" .. unit_number,
-    --     minimum_value = 0.4,
-    --     maximum_value = 5,
-    --     value = 1,
-    --     value_step = 0.1,
-    --     discrete_values = false,
-    -- }
-
-    -- gui_state.controls.time_scale_slider = slider
-
     local tuning_table = tab_tuning_content.add {
         type = "table",
         column_count = 2,
@@ -1030,15 +1018,6 @@ script.on_event(defines.events.on_gui_value_changed, function(event)
         if views.slider and views.slider.valid then views.slider.slider_value = value end
         if views.textfield and views.textfield.valid then views.textfield.text = string_value end
     end)
-
-    local matched_unit = tonumber(event.element.name:match("^pid_combinator_time_scale_slider_(%d+)$"))
-    if not matched_unit then return end
-
-    local viewers = storage.pid_guis and storage.pid_guis[matched_unit]
-    local gui_state = viewers and viewers[event.player_index]
-
-    if not gui_state then return end
-    gui_state.graph.time_scale = event.element.slider_value
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(event)
