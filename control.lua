@@ -1,4 +1,4 @@
-local pid_gui = require "gui.pid-combinator-gui"
+local PidGui = require "gui.pid-combinator-gui"
 local List = require "utils.list"
 local PidSettings = require "model.pid-settings"
 local SettingsTarget = require "gui.settings-target"
@@ -203,7 +203,7 @@ local function on_built(event)
         local carryover_settings = (event.tags and event.tags.pid_settings) or pop_fast_replace(entity)
         entity.operable = false
         setup_combinator(entity, carryover_settings)
-        pid_gui.migrate_ghost_viewers(entity)
+        PidGui.migrate_ghost_viewers(entity)
     elseif entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
         entity.operable = false
     end
@@ -217,7 +217,7 @@ local function close_viewers(unit_number)
         player_indices[#player_indices + 1] = player_index
     end
     for _, player_index in ipairs(player_indices) do
-        pid_gui.destroy(player_index, unit_number)
+        PidGui.destroy(player_index, unit_number)
     end
 end
 
@@ -336,7 +336,7 @@ end
 
 local function on_player_removed(event)
     local player = game.get_player(event.player_index)
-    if player then pid_gui.cleanup(player) end
+    if player then PidGui.cleanup(player) end
     if storage.copy_sources then
         storage.copy_sources[event.player_index] = nil
     end
@@ -369,8 +369,8 @@ local function on_open_input(event)
         return
     end
 
-    pid_gui.destroy(event.player_index, entity.unit_number)
-    pid_gui.display(player, target)
+    PidGui.destroy(event.player_index, entity.unit_number)
+    PidGui.display(player, target)
 end
 
 local function selected_pid_state(event)
@@ -417,15 +417,15 @@ local function on_gui_opened_fallback(event)
         local state = storage.pid and storage.pid[entity.unit_number]
         if not state then return end
         player.opened = nil
-        pid_gui.destroy(event.player_index, entity.unit_number)
-        pid_gui.display(player, SettingsTarget.live(entity.unit_number))
+        PidGui.destroy(event.player_index, entity.unit_number)
+        PidGui.display(player, SettingsTarget.live(entity.unit_number))
         return
     end
 
     if entity.type == "entity-ghost" and entity.ghost_name == "pid-combinator" then
         player.opened = nil
-        pid_gui.destroy(event.player_index, entity.unit_number)
-        pid_gui.display(player, SettingsTarget.ghost(entity))
+        PidGui.destroy(event.player_index, entity.unit_number)
+        PidGui.display(player, SettingsTarget.ghost(entity))
     end
 end
 
@@ -536,7 +536,7 @@ local function process_pid(state, tick)
         state.ki = state.tuner.result.ki
         state.kd = state.tuner.result.kd
         state_reset()
-        pid_gui.on_autotune_finalised(state.entity.unit_number)
+        PidGui.on_autotune_finalised(state.entity.unit_number)
     end
 
     local anti_windup_limit = state.anti_windup_limit
@@ -592,7 +592,7 @@ local function on_tick(event)
             state.entity.destroy{ raise_destroy = true }
         else
             local value = process_pid(state, event.tick)
-            pid_gui.on_tick(unit_number, state, event.tick, value)
+            PidGui.on_tick(unit_number, state, event.tick, value)
         end
     end
 end
