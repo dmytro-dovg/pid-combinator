@@ -1,11 +1,17 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2026-xx-xx
+  Bugfixes:
+    - Status and signal value labels in the GUI now update when the combinator loses power, instead of freezing at their last values.
+    - Output no longer keeps emitting the last value after the input wires are disconnected.
+    - Open GUIs now refresh all controls (gains, anti-windup limit, signal pickers, network checkboxes) when settings change externally via copy/paste, undo/redo, or blueprint paste. Previously they kept showing the old values.
+    - Output wire connections now follow the red/green output flags applied by copy/paste, undo/redo, and blueprint paste.
   Optimizations:
     - Output signal writes are skipped when the numeric value is unchanged tick-to-tick.
     - Output section is toggled active/inactive instead of clearing its slot each tick when no output signal is configured.
     - Graph samples once every 2 ticks instead of every tick, approximately matching display pixel density.
     - Graph data retention buffer shortened to match the visible viewport width.
+    - Input signals are read with a single API call per wire pair instead of separate network lookups.
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.0
 Date: 2026-07-14
