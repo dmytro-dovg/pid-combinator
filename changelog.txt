@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
-Date: 2026-xx-xx
+Date: 2026-07-16
   Gui:
     - Auto-tune button turns into a red Cancel button while a tuning session runs. Clicking it aborts the session and keeps the current gains.
   Locale:

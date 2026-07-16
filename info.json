@@ -1,7 +1,7 @@
 {
     "name": "pid-combinator",
     "description": "A combinator that runs a PID controller for holding a signal at its setpoint.",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "title": "PID Combinator",
     "author": "imoth_f",
     "factorio_version": "2.1",
