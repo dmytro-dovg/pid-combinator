@@ -1,7 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2026-xx-xx
+  Gui:
+    - Auto-tune button turns into a red Cancel button while a tuning session runs. Clicking it aborts the session and keeps the current gains.
+  Locale:
+    - Added English and Ukrainian strings for the auto-tune Cancel button.
   Bugfixes:
+    - Timed-out auto-tune sessions no longer linger in the save.
     - Status and signal value labels in the GUI now update when the combinator loses power, instead of freezing at their last values.
     - Output no longer keeps emitting the last value after the input wires are disconnected.
     - Open GUIs now refresh all controls (gains, anti-windup limit, signal pickers, network checkboxes) when settings change externally via copy/paste, undo/redo, or blueprint paste. Previously they kept showing the old values.

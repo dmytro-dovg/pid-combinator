@@ -198,4 +198,15 @@ function PidTuning.is_done(session)
     return session.state == PidTuning.state.done
 end
 
+---@param session PidTuningSession
+---@return boolean
+function PidTuning.is_aborted(session)
+    return session.state == PidTuning.state.aborted
+end
+
+---@param session PidTuningSession
+function PidTuning.abort(session)
+    session.state = PidTuning.state.aborted
+end
+
 return PidTuning

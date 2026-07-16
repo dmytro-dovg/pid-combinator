@@ -620,6 +620,8 @@ local function process_pid(state, tick)
             state.kd = state.tuner.result.kd
             state_reset(state)
             PidGui.refresh(entity.unit_number)
+        elseif PidTuning.is_aborted(state.tuner) then
+            state_reset(state)
         end
     end
 

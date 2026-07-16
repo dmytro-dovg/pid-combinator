@@ -24,6 +24,7 @@ local C = require "constants"
 ---@field kd_views ValueSliderViews?
 ---@field anti_windup_limit_field LuaGuiElement?
 ---@field auto_tune_textfield LuaGuiElement?
+---@field auto_tune_button LuaGuiElement?
 ---@field dropdown LuaGuiElement?
 ---@field bipolar_checkbox LuaGuiElement?
 ---@field side_frame LuaGuiElement?
@@ -68,7 +69,23 @@ local function term_indicator_center(index)
     }
 end
 
----Sync the status sprite + caption on every open GUI of a combinator.
+---Set the auto-tune button to the green "start" or red "cancel" look.
+---@param button LuaGuiElement?
+---@param tuning boolean
+local function set_autotune_button(button, tuning)
+    if not button or not button.valid then return end
+    if tuning then
+        button.style = "red_button"
+        button.caption = {"gui-pid-combinator.autotune-cancel"}
+        button.tooltip = {"gui-pid-combinator.autotune-cancel-tooltip"}
+    else
+        button.style = "green_button"
+        button.caption = {"gui-pid-combinator.autotune"}
+        button.tooltip = {"gui-pid-combinator.autotune-tooltip"}
+    end
+end
+
+---Sync the status sprite, caption and auto-tune button on every open GUI of a combinator.
 ---@param guis PidGuis
 ---@param status any lookup key for `C.status_visuals`
 local function update_status(guis, status)
@@ -80,6 +97,7 @@ local function update_status(guis, status)
             local label_element = gui_state.controls.status_label
             if sprite_element and sprite_element.valid then sprite_element.sprite = status_visuals.sprite end
             if label_element and label_element.valid then label_element.caption = status_visuals.caption end
+            set_autotune_button(gui_state.controls.auto_tune_button, status == "tuning")
         end
     end
 end
@@ -1071,7 +1089,7 @@ function PidCombinatorGui.display(player, target)
         type = "empty-widget",
     }
 
-    tuning_table.add {
+    local auto_tune_button = tuning_table.add {
         type = "button",
         style = "green_button",
         caption = {"gui-pid-combinator.autotune"},
@@ -1079,6 +1097,8 @@ function PidCombinatorGui.display(player, target)
         tooltip = {"gui-pid-combinator.autotune-tooltip"},
         enabled = gui_state.target.kind ~= "ghost",
     }
+    set_autotune_button(auto_tune_button, initial_status == "tuning")
+    gui_state.controls.auto_tune_button = auto_tune_button
 
     -- Stretch left column
     for i, child in ipairs(tuning_table.children) do
@@ -1295,16 +1315,20 @@ script.on_event(defines.events.on_gui_click, function(event)
         local state = storage.pid and storage.pid[unit_number]
         local gui_state = gui_state(event.player_index, unit_number)
         if state and gui_state and gui_state.target.kind ~= "ghost" then
-            local rule = C.pid.rules[gui_state.controls.dropdown.selected_index]
-            local target = tonumber(gui_state.controls.auto_tune_textfield.text)
-            local bipolar = gui_state.controls.bipolar_checkbox
-                and gui_state.controls.bipolar_checkbox.valid
-                and gui_state.controls.bipolar_checkbox.state
-            state.tuner = PidTuning.new({
-                target = target,
-                rule = rule,
-                bipolar = bipolar,
-            })
+            if PidTuning.is_running(state.tuner) then
+                PidTuning.abort(state.tuner)
+            else
+                local rule = C.pid.rules[gui_state.controls.dropdown.selected_index]
+                local target = tonumber(gui_state.controls.auto_tune_textfield.text)
+                local bipolar = gui_state.controls.bipolar_checkbox
+                    and gui_state.controls.bipolar_checkbox.valid
+                    and gui_state.controls.bipolar_checkbox.state
+                state.tuner = PidTuning.new({
+                    target = target,
+                    rule = rule,
+                    bipolar = bipolar,
+                })
+            end
         end
         return
     end
