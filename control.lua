@@ -139,6 +139,16 @@ local function create_output_for(entity)
     return hidden
 end
 
+---Queue reconnection of both output wires to match the `networks.output`
+---flags. Needed after settings are applied outside the GUI.
+---@param state PidState
+local function sync_output_connections(state)
+    state.pending_connection_changes = {
+        { wire_type = "red", value = state.networks.output.red },
+        { wire_type = "green", value = state.networks.output.green },
+    }
+end
+
 ---Initialises PidState for new entity.
 ---@param entity LuaEntity
 ---@param settings PidSettings?
@@ -262,6 +272,7 @@ local function apply_undo_redo(surface_index, position, settings)
             local tags = ghost.tags or {}
             tags.pid_settings = settings
             ghost.tags = tags
+            PidGui.refresh(ghost.unit_number)
         end
     end
 
@@ -270,6 +281,8 @@ local function apply_undo_redo(surface_index, position, settings)
             local state = storage.pid and storage.pid[entity.unit_number]
             if state then
                 PidSettings.copy(settings, state)
+                sync_output_connections(state)
+                PidGui.refresh(entity.unit_number)
             end
         end
     end
@@ -483,6 +496,8 @@ local function on_paste_input(event)
     local snapshot = storage.copy_sources and storage.copy_sources[event.player_index]
     if not snapshot then return end
     PidSettings.copy(snapshot, state)
+    sync_output_connections(state)
+    PidGui.refresh(state.entity.unit_number)
 end
 
 -- Fallback for editor mode: `operable = false` and `not-selectable-in-game`
@@ -534,6 +549,8 @@ local function on_blueprint_settings_pasted(event)
 
     if event.tags and event.tags.pid_settings then
         PidSettings.copy(event.tags.pid_settings, state)
+        sync_output_connections(state)
+        PidGui.refresh(state.entity.unit_number)
     end
 end
 
@@ -602,7 +619,7 @@ local function process_pid(state, tick)
             state.ki = state.tuner.result.ki
             state.kd = state.tuner.result.kd
             state_reset(state)
-            PidGui.on_autotune_finalised(state.entity.unit_number)
+            PidGui.refresh(entity.unit_number)
         end
     end
 

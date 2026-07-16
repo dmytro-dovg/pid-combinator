@@ -13,6 +13,12 @@ local C = require "constants"
 ---@field sp_value_label LuaGuiElement?
 ---@field pv_value_label LuaGuiElement?
 ---@field output_value_label LuaGuiElement?
+---@field sp_picker SignalPickerViews?
+---@field pv_picker SignalPickerViews?
+---@field output_picker SignalPickerViews?
+---@field terms_button LuaGuiElement?
+---@field pin_button LuaGuiElement?
+---@field close_button LuaGuiElement?
 ---@field kp_views ValueSliderViews?
 ---@field ki_views ValueSliderViews?
 ---@field kd_views ValueSliderViews?
@@ -534,26 +540,49 @@ local function plot(player, gui_state, state, tick, value)
     end
 end
 
-
----Called by control.lua when an autotune session completes. Refreshes
----kp/ki/kd sliders and textfields on every open GUI.
+---Re-read the stored settings and sync settings controls.
 ---@param unit_number uint
-function PidCombinatorGui.on_autotune_finalised(unit_number)
+function PidCombinatorGui.refresh(unit_number)
     local guis = storage.pid_guis and storage.pid_guis[unit_number]
     if not guis then return end
-    local state = storage.pid and storage.pid[unit_number]
-    if not state then return end
     for _, gui in pairs(guis) do
-        local controls = gui.controls
-        for _, comp in ipairs({"p", "i", "d"}) do
-            local views = controls["k" .. comp .. "_views"]
-            local value = state["k" .. comp]
-            if views and value then
-                if views.slider and views.slider.valid then
-                    views.slider.slider_value = value
+        local target = SettingsTarget.resolve(gui.target)
+        if target and target:valid() then
+            local controls = gui.controls
+
+            for _, component in ipairs({"p", "i", "d"}) do
+                local views = controls["k" .. component .. "_views"]
+                local value = target:get_k(component)
+                if views and value then
+                    if views.slider and views.slider.valid then
+                        views.slider.slider_value = value
+                    end
+                    if views.textfield and views.textfield.valid then
+                        views.textfield.text = format_gain(value)
+                    end
                 end
-                if views.textfield and views.textfield.valid then
-                    views.textfield.text = format_gain(value)
+            end
+
+            local anti_windup_limit_field = controls.anti_windup_limit_field
+            if anti_windup_limit_field and anti_windup_limit_field.valid then
+                anti_windup_limit_field.text = tostring(target:get_anti_windup_limit() or "")
+            end
+
+            for _, role in ipairs({"sp", "pv", "output"}) do
+                local picker = controls[role .. "_picker"]
+                if picker then
+                    if picker.elem_button and picker.elem_button.valid then
+                        picker.elem_button.elem_value = target:get_signal(role)
+                    end
+                    local network = target:get_network(role)
+                    if network then
+                        if picker.r_checkbox and picker.r_checkbox.valid then
+                            picker.r_checkbox.state = network.red
+                        end
+                        if picker.g_checkbox and picker.g_checkbox.valid then
+                            picker.g_checkbox.state = network.green
+                        end
+                    end
                 end
             end
         end
@@ -571,10 +600,10 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
 
     local status = PidTuning.is_running(state.tuner) and "tuning" or state.entity.status
     update_status(guis, status)
+    update_value_labels(guis, value)
 
     local data = state.graph_data
     if not data or not value then return end
-    update_value_labels(guis, value)
 
     -- Graph renders at 32px per second. 30hz sampling at 60 UPS is close enough.
     if tick % 2 == 0 then
