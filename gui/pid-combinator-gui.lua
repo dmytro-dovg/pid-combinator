@@ -35,11 +35,6 @@ local C = require "constants"
 
 ---@alias PidGuis table<uint, PidGuiState> keyed by player_index
 
----@class ValueLabels
----@field sp integer?
----@field pv integer?
----@field output number?
-
 local PidCombinatorGui = {}
 
 local offset = {
@@ -111,7 +106,7 @@ local function set_caption(label, n)
 end
 
 ---@param guis PidGuis
----@param value ValueLabels?
+---@param value PidTickResult?
 local function update_value_labels(guis, value)
     for _, gui_state in pairs(guis) do
         set_caption(gui_state.controls.sp_value_label, value and value.sp)
@@ -569,17 +564,17 @@ end
 ---@param unit_number uint
 ---@param state PidState
 ---@param tick uint
----@param value PidTickResult
+---@param value PidTickResult?
 function PidCombinatorGui.on_tick(unit_number, state, tick, value)
     local guis = storage.pid_guis and storage.pid_guis[unit_number]
     if not guis then return end
 
     local status = PidTuning.is_running(state.tuner) and "tuning" or state.entity.status
     update_status(guis, status)
-    update_value_labels(guis, value)
 
     local data = state.graph_data
     if not data or not value then return end
+    update_value_labels(guis, value)
 
     -- Graph renders at 32px per second. 30hz sampling at 60 UPS is close enough.
     if tick % 2 == 0 then

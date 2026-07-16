@@ -667,9 +667,7 @@ local function on_tick(event)
             state.entity.destroy{ raise_destroy = true }
         else
             local value = process_pid(state, event.tick)
-            if value then
-                PidGui.on_tick(unit_number, state, event.tick, value)
-            end
+            PidGui.on_tick(unit_number, state, event.tick, value)
         end
     end
 end
