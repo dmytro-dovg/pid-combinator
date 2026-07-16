@@ -172,6 +172,24 @@ local function position_key(surface_index, position)
     return surface_index .. ":" .. position.x .. ":" .. position.y
 end
 
+---@param entity LuaEntity
+---@param signal SignalID?
+---@param use_red boolean
+---@param use_green boolean
+local function read_signal(entity, signal, use_red, use_green)
+    if not signal then return 0 end
+
+    local red_id = use_red and connector_id.input["red"] or nil
+    local green_id = use_green and connector_id.input["green"] or nil
+
+    if red_id and green_id then
+        return entity.get_signal(signal, red_id, green_id) or 0
+    elseif red_id or green_id then
+        return entity.get_signal(signal, red_id or green_id) or 0
+    end
+    return 0
+end
+
 -- ============================================================================
 -- Fast-replace stash
 -- ============================================================================
@@ -568,31 +586,8 @@ local function process_pid(state, tick)
         return
     end
 
-    local red_network = entity.get_circuit_network(connector_id.input["red"])
-    local green_network = entity.get_circuit_network(connector_id.input["green"])
-
-    if not red_network and not green_network then return end
-
-    local pv = 0
-    local sp = 0
-
-    if red_network then
-        if state.signals.pv and state.networks.pv.red then
-            pv = pv + (red_network.get_signal(state.signals.pv) or 0)
-        end
-        if state.signals.sp and state.networks.sp.red then
-            sp = sp + (red_network.get_signal(state.signals.sp) or 0)
-        end
-    end
-
-    if green_network then
-        if state.signals.pv and state.networks.pv.green then
-            pv = pv + (green_network.get_signal(state.signals.pv) or 0)
-        end
-        if state.signals.sp and state.networks.sp.green then
-            sp = sp + (green_network.get_signal(state.signals.sp) or 0)
-        end
-    end
+    local pv = read_signal(entity, state.signals.pv, state.networks.pv.red, state.networks.pv.green)
+    local sp = read_signal(entity, state.signals.sp, state.networks.sp.red, state.networks.sp.green)
 
     if state.tuner then
         if PidTuning.is_running(state.tuner) then
