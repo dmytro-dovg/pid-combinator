@@ -400,6 +400,12 @@ local function on_entity_cloned(event)
     local src = event.source
     local carryover_settings = src and src.unit_number and storage.pid and storage.pid[src.unit_number]
     dst.operable = false
+    -- Area clone will also duplicate the hidden output combinator.
+    -- Delete it before we setup a new one.
+    local old_output = dst.surface.find_entity("pid-combinator-output", dst.position)
+    if old_output then
+        old_output.destroy()
+    end
     setup_combinator(dst, carryover_settings)
 end
 
