@@ -502,6 +502,7 @@ end
 
 local function on_copy_input(event)
     local entity = entity_for_input_event(event, "pid-combinator")
+    storage.copy_sources = storage.copy_sources or {}
     -- Copy has been called on a different entity type.
     -- Clear currently copied settings to match vanilla Factorio behaviour.
     if not entity then
@@ -510,7 +511,6 @@ local function on_copy_input(event)
     end
     local state = selected_pid_state(entity)
     if not state then return end
-    storage.copy_sources = storage.copy_sources or {}
     local snapshot = {}
     PidSettings.copy(state, snapshot)
     storage.copy_sources[event.player_index] = snapshot
