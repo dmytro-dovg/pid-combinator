@@ -37,11 +37,11 @@ function PidSettings.defaults()
     }
 end
 
----@param signal SignalID?
----@return SignalID?
+---@param signal SignalType?
+---@return SignalType?
 local function copy_signal(signal)
     if not signal then return nil end
-    return { name = signal.name, type = signal.type }
+    return { name = signal.name, type = signal.type, quality = signal.quality }
 end
 
 ---@param source PidSettings

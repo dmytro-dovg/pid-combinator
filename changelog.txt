@@ -4,6 +4,7 @@ Date: 2026-xx-xx
   Bugfixes:
     - Hidden output combinator is no longer duplicated during cloning.
     - Copying settings for a different entity type discards currently copied PID combinator settings. This matches default Factorio behaviour.
+    - Copying settings no longer discards signal quality.
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2026-07-16
