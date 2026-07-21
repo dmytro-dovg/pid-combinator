@@ -2,13 +2,18 @@
 Version: 0.2.2
 Date: 2026-xx-xx
   Gui:
-    - Added auto-tune failure reason.
+    - Auto-tune now shows a failure message on the Tuning tab when it times out without producing a sustained oscillation.
+    - Tuning tab separates the gain settings from the auto-tune controls with a divider.
+    - Kp / Ki / Kd rows show explanatory tooltips on their labels, sliders, and fields.
   Bugfixes:
     - Hidden output combinator is no longer duplicated during cloning.
     - Copying settings for a different entity type discards currently copied PID combinator settings. This matches default Factorio behaviour.
     - Copying settings no longer discards signal quality.
     - Output signal quality is no longer discarded.
     - PID combinator GUI now closes when the ghost is removed with a deconstruction planner.
+    - Combinator GUI and its private graph surface are now cleaned up when the entity is removed without a normal mining event, such as by a script or surface deletion.
+  Locale:
+    - Added English and Ukrainian strings for the auto-tune failure message and the Kp / Ki / Kd tooltips.
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2026-07-16
