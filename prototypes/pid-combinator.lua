@@ -95,6 +95,7 @@ hidden_constant_combinator.selection_box = nil
 hidden_constant_combinator.sprites = nil
 hidden_constant_combinator.alert_when_damaged = false
 hidden_constant_combinator.create_ghost_on_death = false
+hidden_constant_combinator.is_military_target = false
 
 data:extend({ combinator })
 data:extend({ hidden_constant_combinator })

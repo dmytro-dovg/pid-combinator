@@ -133,7 +133,6 @@ local function create_output_for(entity)
     }
     if not hidden then return end
     hidden.destructible = false
-    hidden.is_military_target = false
     hidden.operable = false
     for _, wire_type in ipairs({"red", "green"}) do
         local pid_combinator_connector = entity.get_wire_connector(connector_id.output[wire_type], true)
