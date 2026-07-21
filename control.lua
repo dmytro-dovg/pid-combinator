@@ -779,8 +779,27 @@ script.on_event("pid-combinator-paste", on_paste_input)
 
 script.on_event(defines.events.on_gui_opened, on_gui_opened_fallback)
 
--- Stub to handle migration in future version
-local function on_configuration_changed(_event) end
+local function on_configuration_changed(_event)
+    -- Clear any in-flight auto-tune session.
+    if storage.pid then
+        for _, state in pairs(storage.pid) do
+            if state.tuner then
+                state_reset(state)
+            end
+        end
+    end
+
+    -- Close open GUIs so they rebuild with current layout when reopened.
+    if storage.pid_guis then
+        local unit_numbers = {}
+        for unit_number in pairs(storage.pid_guis) do
+            unit_numbers[#unit_numbers + 1] = unit_number
+        end
+        for _, unit_number in ipairs(unit_numbers) do
+            close_guis(unit_number)
+        end
+    end
+end
 
 script.on_init(function() end)
 script.on_configuration_changed(on_configuration_changed)
