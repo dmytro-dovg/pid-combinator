@@ -501,7 +501,6 @@ local function selected_pid_state(entity)
 end
 
 local function on_copy_input(event)
-    localised_print(serpent.block(event))
     local entity = entity_for_input_event(event, "pid-combinator")
     -- Copy has been called on a different entity type.
     -- Clear currently copied settings to match vanilla Factorio behaviour.
@@ -518,7 +517,6 @@ local function on_copy_input(event)
 end
 
 local function on_paste_input(event)
-    localised_print(serpent.block(event))
     local entity = entity_for_input_event(event, "pid-combinator")
     if not entity then return end
     local state = selected_pid_state(entity)
