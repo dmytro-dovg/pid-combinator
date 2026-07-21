@@ -85,6 +85,32 @@ local function set_autotune_button(button, tuning)
     end
 end
 
+---@param parent LuaGuiElement
+---@return LuaGuiElement
+local function add_settings_table(parent)
+    local settings_table = parent.add {
+        type = "table",
+        column_count = 2,
+        vertical_centering = true,
+    }
+    settings_table.style.horizontally_stretchable = true
+    settings_table.style.right_cell_padding = 8
+    ---@diagnostic disable: assign-type-mismatch
+    settings_table.style.column_alignments[1] = "left"
+    settings_table.style.column_alignments[2] = "right"
+    ---@diagnostic enable: assign-type-mismatch
+    return settings_table
+end
+
+---@param settings_table LuaGuiElement
+local function stretch_left_column(settings_table)
+    for i, child in ipairs(settings_table.children) do
+        if (i - 1) % 2 == 0 then
+            child.style.horizontally_stretchable = true
+        end
+    end
+end
+
 ---Sync the status sprite, caption and auto-tune button on every open GUI of a combinator.
 ---@param guis PidGuis
 ---@param status any lookup key for `C.status_visuals`
@@ -949,25 +975,15 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.output_value_label = output_picker.value_label
     gui_state.controls.output_picker = output_picker
 
-    local tuning_table = tab_tuning_content.add {
-        type = "table",
-        column_count = 2,
-        vertical_centering = true,
-    }
-    tuning_table.style.horizontally_stretchable = true
-    tuning_table.style.right_cell_padding = 8
-    ---@diagnostic disable: assign-type-mismatch
-    tuning_table.style.column_alignments[1] = "left"
-    tuning_table.style.column_alignments[2] = "right"
-    ---@diagnostic enable: assign-type-mismatch
+    local terms_table = add_settings_table(tab_tuning_content)
 
     -- Proportional
     local proportional_tooltip = {"gui-pid-combinator.gain-proportional-tooltip"}
-    InfoLabel.new(tuning_table,
+    InfoLabel.new(terms_table,
         {"gui-pid-combinator.gain-proportional"},
         proportional_tooltip)
 
-    gui_state.controls.kp_views = ValueSlider.new(tuning_table, {
+    gui_state.controls.kp_views = ValueSlider.new(terms_table, {
         slider = {
             name = "pid_combinator_kp_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -985,11 +1001,11 @@ function PidCombinatorGui.display(player, target)
 
     -- Integral
     local integral_tooltip = {"gui-pid-combinator.gain-integral-tooltip"}
-    InfoLabel.new(tuning_table,
+    InfoLabel.new(terms_table,
         {"gui-pid-combinator.gain-integral"},
         integral_tooltip)
 
-    gui_state.controls.ki_views = ValueSlider.new(tuning_table, {
+    gui_state.controls.ki_views = ValueSlider.new(terms_table, {
         slider = {
             name = "pid_combinator_ki_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -1007,11 +1023,11 @@ function PidCombinatorGui.display(player, target)
 
     -- Derivative
     local derivative_tooltip = {"gui-pid-combinator.gain-derivative-tooltip"}
-    InfoLabel.new(tuning_table,
+    InfoLabel.new(terms_table,
         {"gui-pid-combinator.gain-derivative"},
         derivative_tooltip)
 
-    gui_state.controls.kd_views = ValueSlider.new(tuning_table, {
+    gui_state.controls.kd_views = ValueSlider.new(terms_table, {
         slider = {
             name = "pid_combinator_kd_slider_" .. unit_number,
             minimum_value = 0.0,
@@ -1028,9 +1044,9 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.kd_views.textfield.text = format_gain(target:get_k("d"))
 
     -- Anti-windup limit
-    InfoLabel.new(tuning_table, {"gui-pid-combinator.anti-windup-limit"}, {"gui-pid-combinator.anti-windup-limit-tooltip"})
+    InfoLabel.new(terms_table, {"gui-pid-combinator.anti-windup-limit"}, {"gui-pid-combinator.anti-windup-limit-tooltip"})
 
-    local anti_windup_limit_field = tuning_table.add {
+    local anti_windup_limit_field = terms_table.add {
         type = "textfield",
         name = "pid_combinator_anti_windup_limit_textfield_" .. unit_number,
         text = tostring(target:get_anti_windup_limit()),
@@ -1043,11 +1059,18 @@ function PidCombinatorGui.display(player, target)
     anti_windup_limit_field.style.horizontal_align = "center"
     gui_state.controls.anti_windup_limit_field = anti_windup_limit_field
 
-    InfoLabel.new(tuning_table,
+    stretch_left_column(terms_table)
+
+    tab_tuning_content.add { type = "line", direction = "horizontal" }
+
+    -- Auto-tune controls
+    local autotune_table = add_settings_table(tab_tuning_content)
+
+    InfoLabel.new(autotune_table,
         {"gui-pid-combinator.autotune-target"},
         {"gui-pid-combinator.autotune-target-tooltip"})
 
-    local auto_tune_textfield = tuning_table.add {
+    local auto_tune_textfield = autotune_table.add {
         type = "textfield",
         name = "pid_combinator_autotune_target_textfield_" .. unit_number,
         text = "80",
@@ -1063,11 +1086,11 @@ function PidCombinatorGui.display(player, target)
         table.insert(rule_items, item.name)
     end
 
-    InfoLabel.new(tuning_table,
+    InfoLabel.new(autotune_table,
         {"gui-pid-combinator.autotune-rule"},
         {"gui-pid-combinator.autotune-rule-tooltip"})
 
-    local auto_tune_dropdown = tuning_table.add {
+    local auto_tune_dropdown = autotune_table.add {
         type = "drop-down",
         name = "pid_combinator_auto_tune_rule_dropdown_" .. unit_number,
         items = rule_items,
@@ -1078,11 +1101,11 @@ function PidCombinatorGui.display(player, target)
     auto_tune_textfield.style.width = 80
     gui_state.controls.auto_tune_textfield = auto_tune_textfield
 
-    InfoLabel.new(tuning_table,
+    InfoLabel.new(autotune_table,
         {"gui-pid-combinator.autotune-bipolar"},
         {"gui-pid-combinator.autotune-bipolar-tooltip"})
 
-    local bipolar_checkbox = tuning_table.add {
+    local bipolar_checkbox = autotune_table.add {
         type = "checkbox",
         name = "pid_combinator_autotune_bipolar_checkbox_" .. unit_number,
         state = false,
@@ -1091,11 +1114,11 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.bipolar_checkbox = bipolar_checkbox
 
     -- Empty space to move tuning button to the right
-    tuning_table.add {
+    autotune_table.add {
         type = "empty-widget",
     }
 
-    local auto_tune_button = tuning_table.add {
+    local auto_tune_button = autotune_table.add {
         type = "button",
         style = "green_button",
         caption = {"gui-pid-combinator.autotune"},
@@ -1106,12 +1129,7 @@ function PidCombinatorGui.display(player, target)
     set_autotune_button(auto_tune_button, initial_status == "tuning")
     gui_state.controls.auto_tune_button = auto_tune_button
 
-    -- Stretch left column
-    for i, child in ipairs(tuning_table.children) do
-        if (i - 1) % 2 == 0 then
-            child.style.horizontally_stretchable = true
-        end
-    end
+    stretch_left_column(autotune_table)
 
     -- PID terms side panel
     local side_frame = outer.add {
