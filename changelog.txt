@@ -6,6 +6,7 @@ Date: 2026-xx-xx
     - Copying settings for a different entity type discards currently copied PID combinator settings. This matches default Factorio behaviour.
     - Copying settings no longer discards signal quality.
     - Output signal quality is no longer discarded.
+    - PID combinator GUI now closes when the ghost is removed with a deconstruction planner.
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2026-07-16

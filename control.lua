@@ -324,7 +324,7 @@ local function close_guis(unit_number)
 end
 
 local function on_removed(event)
-    local entity = event.entity
+    local entity = event.entity or event.ghost
     if not entity or not entity.valid then return end
 
     -- In editor mode a player can select and remove the hidden entity directly.
@@ -746,6 +746,7 @@ local on_removed_events = {
     defines.events.on_robot_pre_mined,
     defines.events.on_space_platform_pre_mined,
     defines.events.script_raised_destroy,
+    defines.events.on_pre_ghost_deconstructed,
 }
 
 for _, event in pairs(on_built_events) do
