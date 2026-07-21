@@ -81,6 +81,7 @@ hidden_constant_combinator.flags = {
     'placeable-off-grid',
 }
 
+hidden_constant_combinator.minable = nil
 hidden_constant_combinator.active_energy_usage = '0.0W'
 hidden_constant_combinator.activity_led_sprites = nil
 hidden_constant_combinator.collision_box = nil
