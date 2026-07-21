@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.2
-Date: 2026-xx-xx
+Date: 2026-07-21
   Gui:
     - Auto-tune now shows a failure message on the Tuning tab when it times out without producing a sustained oscillation.
     - Tuning tab separates the gain settings from the auto-tune controls with a divider.
