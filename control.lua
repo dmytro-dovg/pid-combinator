@@ -107,7 +107,7 @@ local function write_output(state, value)
                     type = state.signals.output.type,
                     name = state.signals.output.name,
                     comparator = "=",
-                    quality = "normal",
+                    quality = state.signals.output.quality or "normal",
                 },
                 min = clamped,
             })
