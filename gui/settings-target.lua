@@ -8,6 +8,8 @@ local PidSettings = require "model.pid-settings"
 ---| { kind: "live", unit_number: uint }
 ---| { kind: "ghost", entity: LuaEntity }
 
+---@alias SignalType SignalID | string | PrototypeWithQuality
+
 ---A unified read/write interface over either a live combinator's storage
 ---state or a ghost's tag payload. Descriptors are safe to persist.
 ---Instances are rebuilt via `SettingsTarget.resolve` on load.
@@ -20,8 +22,8 @@ local PidSettings = require "model.pid-settings"
 ---@field set_k fun(self: SettingsTarget, component: KComponent, value: number)
 ---@field get_anti_windup_limit fun(self: SettingsTarget): number?
 ---@field set_anti_windup_limit fun(self: SettingsTarget, value: number)
----@field get_signal fun(self: SettingsTarget, role: SignalRole): SignalID?
----@field set_signal fun(self: SettingsTarget, role: SignalRole, value: SignalID?)
+---@field get_signal fun(self: SettingsTarget, role: SignalRole): SignalType?
+---@field set_signal fun(self: SettingsTarget, role: SignalRole, value: SignalType?)
 ---@field get_network fun(self: SettingsTarget, role: SignalRole): NetworkFlags?
 ---@field set_network fun(self: SettingsTarget, role: SignalRole, wire_type: WireType, value: boolean)
 ---@field queue_output_connection_change fun(self: SettingsTarget, wire_type: WireType, value: boolean)

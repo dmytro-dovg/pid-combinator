@@ -647,6 +647,7 @@ end
 ---@param target SettingsTarget
 function PidCombinatorGui.display(player, target)
     local unit_number = target:unit_number()
+    if not unit_number then return end
     storage.pid_guis = storage.pid_guis or {}
     storage.pid_guis[unit_number] = storage.pid_guis[unit_number] or {}
     local entry = storage.pid_guis[unit_number][player.index]
@@ -955,22 +956,22 @@ function PidCombinatorGui.display(player, target)
     }
     tuning_table.style.horizontally_stretchable = true
     tuning_table.style.right_cell_padding = 8
+    ---@diagnostic disable: assign-type-mismatch
     tuning_table.style.column_alignments[1] = "left"
     tuning_table.style.column_alignments[2] = "right"
+    ---@diagnostic enable: assign-type-mismatch
 
     -- Proportional
-    tuning_table.add {
-        type = "label",
-        caption = {"gui-pid-combinator.gain-proportional"},
-        style = "bold_label",
-    }
+    InfoLabel.new(tuning_table,
+        {"gui-pid-combinator.gain-proportional"},
+        {"gui-pid-combinator.gain-proportional-tooltip"})
 
     gui_state.controls.kp_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_kp_slider_" .. unit_number,
             minimum_value = 0.0,
             maximum_value = 5,
-            value = target:get_k("p"),
+            value = target:get_k("p") or 0,
             value_step = 0.05,
         },
         textfield = {
@@ -980,18 +981,16 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.kp_views.textfield.text = format_gain(target:get_k("p"))
 
     -- Integral
-    tuning_table.add {
-        type = "label",
-        caption = {"gui-pid-combinator.gain-integral"},
-        style = "bold_label",
-    }
+    InfoLabel.new(tuning_table,
+        {"gui-pid-combinator.gain-integral"},
+        {"gui-pid-combinator.gain-integral-tooltip"})
 
     gui_state.controls.ki_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_ki_slider_" .. unit_number,
             minimum_value = 0.0,
             maximum_value = 5,
-            value = target:get_k("i"),
+            value = target:get_k("i") or 0,
             value_step = 0.05,
         },
         textfield = {
@@ -1001,18 +1000,17 @@ function PidCombinatorGui.display(player, target)
     gui_state.controls.ki_views.textfield.text = format_gain(target:get_k("i"))
 
     -- Derivative
-    tuning_table.add {
-        type = "label",
-        caption = {"gui-pid-combinator.gain-derivative"},
-        style = "bold_label",
-    }
+
+    InfoLabel.new(tuning_table,
+        {"gui-pid-combinator.gain-derivative"},
+        {"gui-pid-combinator.gain-derivative-tooltip"})
 
     gui_state.controls.kd_views = ValueSlider.new(tuning_table, {
         slider = {
             name = "pid_combinator_kd_slider_" .. unit_number,
             minimum_value = 0.0,
             maximum_value = 5,
-            value = target:get_k("d"),
+            value = target:get_k("d") or 0,
             value_step = 0.05,
         },
         textfield = {
@@ -1199,7 +1197,7 @@ script.on_event(defines.events.on_gui_text_changed, function(event)
 
     local match_component, matched_unit = event.element.name:match("^pid_combinator_k([a-z])_textfield_([0-9]+)")
     unit_number = tonumber(matched_unit)
-    if not matched_unit then return end
+    if not unit_number then return end
 
     local gui_state = gui_state(event.player_index, unit_number)
     local value = tonumber(event.element.text)
