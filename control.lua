@@ -482,18 +482,34 @@ local function on_open_input(event)
 end
 
 ---@param event { player_index: uint }
----@return PidState?
-local function selected_pid_state(event)
+---@param type string?
+---@return LuaEntity?
+local function entity_for_input_event(event, type)
     local player = game.get_player(event.player_index)
     if not player then return nil end
     local entity = player.selected
-    if not entity or not entity.valid or entity.name ~= "pid-combinator" then return nil end
+    if not entity or not entity.valid then return nil end
     if player.force ~= entity.force then return nil end
+    if type and entity.name ~= type then return nil end
+    return entity
+end
+
+---@param entity LuaEntity
+---@return PidState?
+local function selected_pid_state(entity)
     return storage.pid and storage.pid[entity.unit_number]
 end
 
 local function on_copy_input(event)
-    local state = selected_pid_state(event)
+    localised_print(serpent.block(event))
+    local entity = entity_for_input_event(event, "pid-combinator")
+    -- Copy has been called on a different entity type.
+    -- Clear currently copied settings to match vanilla Factorio behaviour.
+    if not entity then
+        storage.copy_sources[event.player_index] = nil
+        return
+    end
+    local state = selected_pid_state(entity)
     if not state then return end
     storage.copy_sources = storage.copy_sources or {}
     local snapshot = {}
@@ -502,7 +518,10 @@ local function on_copy_input(event)
 end
 
 local function on_paste_input(event)
-    local state = selected_pid_state(event)
+    localised_print(serpent.block(event))
+    local entity = entity_for_input_event(event, "pid-combinator")
+    if not entity then return end
+    local state = selected_pid_state(entity)
     if not state then return end
     local snapshot = storage.copy_sources and storage.copy_sources[event.player_index]
     if not snapshot then return end
