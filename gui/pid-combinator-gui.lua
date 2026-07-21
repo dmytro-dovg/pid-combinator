@@ -327,12 +327,12 @@ end
 ---Draw a line-graph for a single PID term (P, I, or D) onto
 ---the private graph surface.
 ---@param surface LuaSurface
----@param player LuaPlayer
+---@param player_index integer
 ---@param ttl uint frames the drawing should live for
 ---@param center { x: number, y: number }
 ---@param term_value number? current signed value of the term
 ---@param bar_color number[]
-local function draw_term_indicator(surface, player, ttl, center, term_value, bar_color)
+local function draw_term_indicator(surface, player_index, ttl, center, term_value, bar_color)
     local inset = C.graph.px_per_tile
     local half_w = C.term_indicator.width_px * 0.5 * C.graph.px_per_tile
     local half_h = C.term_indicator.height_px * 0.5 * C.graph.px_per_tile
@@ -348,7 +348,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         right_bottom = { center.x + half_w, top },
         filled = true,
         color = C.colors.terms.frame,
-        players = { player },
+        players = { player_index },
         time_to_live = ttl,
     }
     rendering.draw_rectangle {
@@ -357,7 +357,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         right_bottom = { center.x + half_w - inset, inner_top },
         filled = true,
         color = C.colors.terms.background,
-        players = { player },
+        players = { player_index },
         time_to_live = ttl,
     }
 
@@ -373,7 +373,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         right_bottom = { bar_right, inner_top },
         filled = true,
         color = bar_color,
-        players = { player },
+        players = { player_index },
         time_to_live = ttl,
     }
 
@@ -387,7 +387,7 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
                 to   = { tick_x, inner_top },
                 color = C.colors.terms.tick,
                 width = 1,
-                players = { player },
+                players = { player_index },
                 time_to_live = ttl,
             }
         end
@@ -400,19 +400,19 @@ local function draw_term_indicator(surface, player, ttl, center, term_value, bar
         to   = { center.x, top },
         color = C.colors.terms.zero,
         width = C.term_indicator.zero_line_width,
-        players = { player },
+        players = { player_index },
         time_to_live = ttl,
     }
 end
 
 ---Render one frame of the graph (SP/PV lines, gridlines, axis labels, and
 ---the PID term indicators) onto the private surface for one player.
----@param player LuaPlayer
+---@param player_index integer
 ---@param gui_state PidGuiState
 ---@param state PidState
 ---@param tick uint
 ---@param value PidTickResult
-local function plot(player, gui_state, state, tick, value)
+local function plot(player_index, gui_state, state, tick, value)
     local data = state and state.graph_data
     if not data then return end
     if not gui_state then return end
@@ -452,7 +452,7 @@ local function plot(player, gui_state, state, tick, value)
                 to = { x, -offset.y },
                 color = C.colors.graph.gridline,
                 width = 1,
-                players = { player },
+                players = { player_index },
                 time_to_live = ttl,
             }
         end
@@ -481,7 +481,7 @@ local function plot(player, gui_state, state, tick, value)
             from = { 0, y }, to = { 2 * offset.x, y },
             color = gridline_color,
             width = 1,
-            players = { player },
+            players = { player_index },
             time_to_live = ttl,
         }
 
@@ -494,7 +494,7 @@ local function plot(player, gui_state, state, tick, value)
             font = "default-semibold",
             scale = 1.0,
             alignment = "right",
-            players = { player },
+            players = { player_index },
             time_to_live = ttl,
         }
     end
@@ -509,7 +509,7 @@ local function plot(player, gui_state, state, tick, value)
             dash_length = 0.2,
             color = C.colors.graph.tuning_line,
             width = 1,
-            players = { player },
+            players = { player_index },
             time_to_live = ttl,
         }
     end
@@ -528,7 +528,7 @@ local function plot(player, gui_state, state, tick, value)
                 to = { current_x, map_y(current_sample.sp, axis_maximum) },
                 color = C.colors.graph.sp_line,
                 width = 1,
-                players = { player },
+                players = { player_index },
                 time_to_live = ttl,
             }
         end
@@ -540,7 +540,7 @@ local function plot(player, gui_state, state, tick, value)
             to = { current_x, map_y(current_sample.value, axis_maximum) },
             color = C.colors.graph.pv_line,
             width = 1,
-            players = { player },
+            players = { player_index },
             time_to_live = ttl,
         }
     end
@@ -550,7 +550,7 @@ local function plot(player, gui_state, state, tick, value)
     local side_frame = gui_state.controls.side_frame
     if side_frame and side_frame.valid and side_frame.visible then
         for index, term in ipairs(C.terms) do
-            draw_term_indicator(surface, player, ttl,
+            draw_term_indicator(surface, player_index, ttl,
                 term_indicator_center(index),
                 value[term.key],
                 C.colors.terms[term.key .. "_bar"])
