@@ -82,18 +82,19 @@ hidden_constant_combinator.flags = {
 }
 
 hidden_constant_combinator.minable = nil
-hidden_constant_combinator.active_energy_usage = '0.0W'
+hidden_constant_combinator.activity_led_light = nil
 hidden_constant_combinator.activity_led_sprites = nil
 hidden_constant_combinator.collision_box = nil
 hidden_constant_combinator.collision_mask = { layers = {} }
 hidden_constant_combinator.draw_circuit_wires = false
-hidden_constant_combinator.energy_source = { type = 'void' }
 hidden_constant_combinator.hidden = true
 hidden_constant_combinator.hidden_in_factoriopedia = true
 hidden_constant_combinator.icon = nil
 hidden_constant_combinator.selectable_in_game = false
 hidden_constant_combinator.selection_box = nil
 hidden_constant_combinator.sprites = nil
+hidden_constant_combinator.alert_when_damaged = false
+hidden_constant_combinator.create_ghost_on_death = false
 
 data:extend({ combinator })
 data:extend({ hidden_constant_combinator })
