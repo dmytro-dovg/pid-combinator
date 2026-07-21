@@ -706,6 +706,7 @@ local function on_tick(event)
     if not storage.pid then return end
     for unit_number, state in pairs(storage.pid) do
         if not state.entity.valid then
+            close_guis(unit_number)
             storage.pid[unit_number] = nil
         elseif not state.output_entity.valid then
             state.entity.destroy{ raise_destroy = true }
