@@ -189,7 +189,7 @@ end
 ---@param session PidTuningSession?
 ---@return boolean
 function PidTuning.is_running(session)
-    return session and session.state ~= PidTuning.state.done and session.state ~= PidTuning.state.aborted
+    return session ~= nil and session.state ~= PidTuning.state.done and session.state ~= PidTuning.state.aborted
 end
 
 ---@param session PidTuningSession

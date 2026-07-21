@@ -1,5 +1,5 @@
 ---@class ValueSliderConfig
----@field slider { name: string, minimum_value: number, maximum_value: number, value: number, value_step: number? }
+---@field slider { name: string, type: string, minimum_value: number, maximum_value: number, value: number, value_step: number? }
 ---@field textfield { name: string }
 
 ---@class ValueSliderViews

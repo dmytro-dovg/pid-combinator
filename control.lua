@@ -71,6 +71,7 @@ end
 ---@param value number
 local function write_output(state, value)
     local cb = state.output_entity.get_or_create_control_behavior()
+    if not cb then return end
     local section = cb.get_section(1)
     if not section then
         section = cb.add_section("output")
@@ -83,11 +84,12 @@ local function write_output(state, value)
             local wire_type = change.wire_type
             local pid_combinator_connector = state.entity.get_wire_connector(connector_id.output[wire_type], false)
             local output_combinator_connector = state.output_entity.get_wire_connector(connector_id.input[wire_type], false)
-
-            if change.value then
-                pid_combinator_connector.connect_to(output_combinator_connector, false, origin)
-            else
-                pid_combinator_connector.disconnect_from(output_combinator_connector, origin)
+            if pid_combinator_connector and output_combinator_connector then
+                if change.value then
+                    pid_combinator_connector.connect_to(output_combinator_connector, false, origin)
+                else
+                    pid_combinator_connector.disconnect_from(output_combinator_connector, origin)
+                end
             end
         end
 
@@ -119,7 +121,7 @@ end
 ---Creates the hidden constant combinator entity paired with a PID combinator and
 ---wires it up to both output connectors.
 ---@param entity LuaEntity
----@return LuaEntity
+---@return LuaEntity?
 local function create_output_for(entity)
     local surface = entity.surface
     local hidden = surface.create_entity{
@@ -128,12 +130,15 @@ local function create_output_for(entity)
         force = entity.force,
         create_build_effect_smoke = false,
     }
+    if not hidden then return end
     hidden.destructible = false
     hidden.operable = false
     for _, wire_type in ipairs({"red", "green"}) do
         local pid_combinator_connector = entity.get_wire_connector(connector_id.output[wire_type], true)
         local output_combinator_connector = hidden.get_wire_connector(connector_id.input[wire_type], true)
-        pid_combinator_connector.connect_to(output_combinator_connector, false, defines.wire_origin.script)
+        if pid_combinator_connector and output_combinator_connector then
+            pid_combinator_connector.connect_to(output_combinator_connector, false, defines.wire_origin.script)
+        end
     end
 
     return hidden
@@ -571,6 +576,7 @@ local function on_player_setup_blueprint(event)
         end
     end
 
+    if not blueprint then return end
     for blueprint_index, entity in pairs(mapping) do
         if entity.valid and entity.name == "pid-combinator" then
             local source = storage.pid and storage.pid[entity.unit_number]
@@ -598,6 +604,7 @@ local function process_pid(state, tick)
     if entity.status == defines.entity_status.no_power then
         state_reset(state)
         local cb = state.output_entity.get_or_create_control_behavior()
+        if not cb then return end
         local section = cb.get_section(1)
         set_section_active(section, false)
         return
