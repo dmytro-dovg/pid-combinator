@@ -25,6 +25,7 @@ local C = require "constants"
 ---@field anti_windup_limit_field LuaGuiElement?
 ---@field auto_tune_textfield LuaGuiElement?
 ---@field auto_tune_button LuaGuiElement?
+---@field tune_status_label LuaGuiElement?
 ---@field dropdown LuaGuiElement?
 ---@field bipolar_checkbox LuaGuiElement?
 ---@field side_frame LuaGuiElement?
@@ -83,6 +84,13 @@ local function set_autotune_button(button, tuning)
         button.caption = {"gui-pid-combinator.autotune"}
         button.tooltip = {"gui-pid-combinator.autotune-tooltip"}
     end
+end
+
+---@param reason PidTuningFailureReason?
+---@return LocalisedString
+local function tune_failure_caption(reason)
+    if not reason then return "" end
+    return {"gui-pid-combinator.autotune-failed-" .. reason}
 end
 
 ---@param parent LuaGuiElement
@@ -589,10 +597,16 @@ end
 function PidCombinatorGui.refresh(unit_number)
     local guis = storage.pid_guis and storage.pid_guis[unit_number]
     if not guis then return end
+    local state = storage.pid and storage.pid[unit_number]
     for _, gui in pairs(guis) do
         local target = SettingsTarget.resolve(gui.target)
         if target and target:valid() then
             local controls = gui.controls
+
+            local tune_status_label = controls.tune_status_label
+            if tune_status_label and tune_status_label.valid then
+                tune_status_label.caption = tune_failure_caption(state and state.tune_failure)
+            end
 
             for _, component in ipairs({"p", "i", "d"}) do
                 local views = controls["k" .. component .. "_views"]
@@ -1113,10 +1127,15 @@ function PidCombinatorGui.display(player, target)
     }
     gui_state.controls.bipolar_checkbox = bipolar_checkbox
 
-    -- Empty space to move tuning button to the right
-    autotune_table.add {
-        type = "empty-widget",
+    -- Auto-tune status label
+    local tune_status_label = autotune_table.add {
+        type = "label",
     }
+    tune_status_label.style.font_color = C.colors.gui.tune_failure
+    tune_status_label.style.single_line = false
+    local live_state = storage.pid and storage.pid[unit_number]
+    tune_status_label.caption = tune_failure_caption(live_state and live_state.tune_failure)
+    gui_state.controls.tune_status_label = tune_status_label
 
     local auto_tune_button = autotune_table.add {
         type = "button",
@@ -1340,7 +1359,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         local gui_state = gui_state(event.player_index, unit_number)
         if state and gui_state and gui_state.target.kind ~= "ghost" then
             if PidTuning.is_running(state.tuner) then
-                PidTuning.abort(state.tuner)
+                PidTuning.cancel(state.tuner)
             else
                 local rule = C.pid.rules[gui_state.controls.dropdown.selected_index]
                 local target = tonumber(gui_state.controls.auto_tune_textfield.text)
@@ -1352,6 +1371,8 @@ script.on_event(defines.events.on_gui_click, function(event)
                     rule = rule,
                     bipolar = bipolar,
                 })
+                state.tune_failure = nil
+                PidCombinatorGui.refresh(unit_number)
             end
         end
         return

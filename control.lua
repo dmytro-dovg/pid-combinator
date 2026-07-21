@@ -24,6 +24,7 @@ local C = require "constants"
 ---@field filtered_derivative number low-pass-filtered derivative
 ---@field graph_data List<PidGraphSample>
 ---@field tuner PidTuningSession? active autotune session
+---@field tune_failure PidTuningFailureReason? failure reason from the last autotune, nil if none
 
 ---@class PidTickResult
 ---@field output number
@@ -649,10 +650,13 @@ local function process_pid(state, tick)
             state.kp = state.tuner.result.kp
             state.ki = state.tuner.result.ki
             state.kd = state.tuner.result.kd
+            state.tune_failure = nil
             state_reset(state)
             PidGui.refresh(entity.unit_number)
-        elseif PidTuning.is_aborted(state.tuner) then
+        else
+            state.tune_failure = PidTuning.failure_reason(state.tuner)
             state_reset(state)
+            PidGui.refresh(entity.unit_number)
         end
     end
 

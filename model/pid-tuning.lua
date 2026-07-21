@@ -1,6 +1,10 @@
 local C = require "constants"
 
----@alias PidTuningState "none"|"rising"|"falling"|"done"|"aborted"
+---Current state of the tuning state machine. `reason` is only carried by the
+---"failed" state.
+---@class PidTuningStatus
+---@field name PidTuningState
+---@field reason PidTuningFailureReason?
 
 ---@class TuningRule
 ---@field name string
@@ -14,7 +18,7 @@ local C = require "constants"
 ---@field kd number
 
 ---@class PidTuningSession
----@field state PidTuningState
+---@field state PidTuningStatus
 ---@field target number setpoint the relay oscillates around
 ---@field target_cycles integer measurement cycles after settle
 ---@field settle_cycles integer leading cycles discarded
@@ -50,13 +54,27 @@ local C = require "constants"
 
 local PidTuning = {}
 
+---@enum PidTuningState
 PidTuning.state = {
-    none = "none",
+    not_started = "not_started",
     rising = "rising",
     falling = "falling",
     done  = "done",
-    aborted = "aborted",
+    cancelled = "cancelled",
+    failed = "failed",
 }
+
+---@enum PidTuningFailureReason
+PidTuning.failure = {
+    no_oscillation = "no-oscillation",
+}
+
+---@param name PidTuningState
+---@param reason PidTuningFailureReason?
+---@return PidTuningStatus
+local function status(name, reason)
+    return { name = name, reason = reason }
+end
 
 local defaults = {
     target_cycles = 5,
@@ -83,7 +101,7 @@ function PidTuning.new(opts)
     local initial_d = opts.initial_d or half
     if initial_d > half then initial_d = half end
     return {
-        state = PidTuning.state.none,
+        state = status(PidTuning.state.not_started),
         target = target,
         target_cycles = opts.target_cycles or defaults.target_cycles,
         settle_cycles = opts.settle_cycles or defaults.settle_cycles,
@@ -113,9 +131,9 @@ end
 ---@param tick uint current game tick
 ---@return integer output value to write to the actuator
 function PidTuning.loop(session, pv, tick)
-    if session.state == PidTuning.state.done then return 0 end
-    if session.state == PidTuning.state.none then
-        session.state = PidTuning.state.rising
+    if session.state.name == PidTuning.state.done then return 0 end
+    if session.state.name == PidTuning.state.not_started then
+        session.state = status(PidTuning.state.rising)
         session.start_tick = tick
         session.t1 = tick
         session.t2 = tick
@@ -123,15 +141,15 @@ function PidTuning.loop(session, pv, tick)
     end
 
     if tick > session.start_tick + session.max_ticks then
-        session.state = PidTuning.state.aborted
+        session.state = status(PidTuning.state.failed, PidTuning.failure.no_oscillation)
         return 0
     end
     session.max_pv = math.max(session.max_pv, pv)
     session.min_pv = math.min(session.min_pv, pv)
 
-    if session.state == PidTuning.state.rising then
+    if session.state.name == PidTuning.state.rising then
         if pv > session.target then
-            session.state = PidTuning.state.falling
+            session.state = status(PidTuning.state.falling)
             session.t1 = tick
             session.t_high = session.t1 - session.t2
             session.max_pv = session.target
@@ -140,9 +158,9 @@ function PidTuning.loop(session, pv, tick)
         return session.bias + session.d
     end
 
-    if session.state == PidTuning.state.falling then
+    if session.state.name == PidTuning.state.falling then
         if pv < session.target then
-            session.state = PidTuning.state.rising
+            session.state = status(PidTuning.state.rising)
             session.t2 = tick
             session.t_low = session.t2 - session.t1
 
@@ -162,7 +180,7 @@ function PidTuning.loop(session, pv, tick)
                     local kd = kp * td
 
                     session.result = { kp = kp, ki = ki, kd = kd, }
-                    session.state = PidTuning.state.done
+                    session.state = status(PidTuning.state.done)
                     return 0
                 end
                 -- Bias adjustment
@@ -189,24 +207,40 @@ end
 ---@param session PidTuningSession?
 ---@return boolean
 function PidTuning.is_running(session)
-    return session ~= nil and session.state ~= PidTuning.state.done and session.state ~= PidTuning.state.aborted
+    return session ~= nil
+        and session.state.name ~= PidTuning.state.done
+        and session.state.name ~= PidTuning.state.cancelled
+        and session.state.name ~= PidTuning.state.failed
 end
 
 ---@param session PidTuningSession
 ---@return boolean
 function PidTuning.is_done(session)
-    return session.state == PidTuning.state.done
+    return session.state.name == PidTuning.state.done
 end
 
 ---@param session PidTuningSession
 ---@return boolean
-function PidTuning.is_aborted(session)
-    return session.state == PidTuning.state.aborted
+function PidTuning.is_cancelled(session)
+    return session.state.name == PidTuning.state.cancelled
 end
 
 ---@param session PidTuningSession
-function PidTuning.abort(session)
-    session.state = PidTuning.state.aborted
+---@return boolean
+function PidTuning.is_failed(session)
+    return session.state.name == PidTuning.state.failed
+end
+
+---@param session PidTuningSession
+---@return PidTuningFailureReason?
+function PidTuning.failure_reason(session)
+    return session.state.reason
+end
+
+
+---@param session PidTuningSession
+function PidTuning.cancel(session)
+    session.state = status(PidTuning.state.cancelled)
 end
 
 return PidTuning

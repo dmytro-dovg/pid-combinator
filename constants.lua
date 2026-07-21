@@ -8,7 +8,7 @@
 ---@field term_indicator { width_px: integer, height_px: integer, tick_step_px: integer, tick_count: integer, zero_line_width: integer, row_gap_px: integer, surface_origin: { x: integer, y: integer } }
 ---@field terms { key: KComponent, caption: LocalisedString }[]
 ---@field status_visuals table<any, { sprite: string, caption: LocalisedString }>
----@field colors { graph: table<string, number[]>, terms: table<string, number[]> }
+---@field colors { graph: table<string, number[]>, terms: table<string, number[]>, gui: table<string, number[]> }
 
 local C = {}
 
@@ -117,6 +117,9 @@ C.colors = {
         background = { 80, 80, 80, },
         tick = { 62, 61, 62, },
         zero = { 42, 41, 42, },
+    },
+    gui = {
+        tune_failure = { 1, 0.5, 0.2 },
     },
 }
 

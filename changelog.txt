@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.2
 Date: 2026-xx-xx
+  Gui:
+    - Added auto-tune failure reason.
   Bugfixes:
     - Hidden output combinator is no longer duplicated during cloning.
     - Copying settings for a different entity type discards currently copied PID combinator settings. This matches default Factorio behaviour.
