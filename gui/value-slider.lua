@@ -1,6 +1,6 @@
 ---@class ValueSliderConfig
----@field slider { name: string, type: string, minimum_value: number, maximum_value: number, value: number, value_step: number? }
----@field textfield { name: string }
+---@field slider { name: string, type: string, minimum_value: number, maximum_value: number, value: number, value_step: number?, tooltip: LocalisedString? }
+---@field textfield { name: string, tooltip: LocalisedString? }
 
 ---@class ValueSliderViews
 ---@field slider LuaGuiElement
@@ -31,6 +31,7 @@ function ValueSlider.new(parent, config)
         text = tostring(config.slider.value),
         numeric = true,
         allow_decimal = true,
+        tooltip = config.textfield.tooltip,
     }
     textfield.style.width = 80
     textfield.style.horizontal_align = "center"
