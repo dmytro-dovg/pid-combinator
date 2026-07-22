@@ -79,7 +79,7 @@ end
 local defaults = {
     target_cycles = 5,
     settle_cycles = 1,
-    max_ticks = 60 * C.ticks_per_second,
+    max_ticks = minute,
     rule = C.pid.rules[1],
     -- Unipolar by default. Should still work on bipolar setup.
     -- Having a bipolar default would break on tuning unipolar system.
@@ -170,7 +170,7 @@ function PidTuning.loop(session, pv, tick)
                 if session.cycles >= (session.settle_cycles + session.target_cycles) then
                     local amplitude = session.max_pv - session.min_pv
                     local ku = (4 * session.d) / (math.pi * amplitude * 0.5)
-                    local tu = total_t / C.ticks_per_second
+                    local tu = total_t / second
 
                     local ti = session.rule.nf * tu
                     local td = session.rule.df * tu

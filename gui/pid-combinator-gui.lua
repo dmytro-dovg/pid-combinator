@@ -45,18 +45,18 @@ local C = require "constants"
 
 local PidCombinatorGui = {}
 
-local offset = {
-    x = (C.graph.viewport.width  / C.graph.tile_size) / 2,
-    y = (C.graph.viewport.height / C.graph.tile_size) / 2,
-}
-local viewport_tile_width = C.graph.viewport.width / C.graph.tile_size
+local offset = util.by_pixel(
+    C.graph.viewport.width / 2,
+    C.graph.viewport.height / 2
+)
+local viewport_tile_width = util.by_pixel(C.graph.viewport.width, 0)[1]
 
 ---Map a data value onto the graph surface's Y coordinate
 ---@param value number
 ---@param maximum_value number
 ---@return number
 local function map_y(value, maximum_value)
-    return -offset.y * (value / maximum_value)
+    return -offset[2] * (value / maximum_value)
 end
 
 ---Center of a term indicator within a surface. P=1, I=2, D=3.
@@ -316,7 +316,7 @@ local function create_graph(gui_state, parent, initial_zoom)
     local graph_camera = parent.add{
         type = "camera",
         name = "graph_camera",
-        position = { offset.x, 0 },
+        position = { offset[1], 0 },
         surface_index = gui_state.graph.surface.index,
         zoom = initial_zoom
     }
@@ -454,12 +454,12 @@ local function plot(player_index, gui_state, state, tick, value)
     if not surface or not surface.valid then return end
 
     local tiles_per_second = gui_state.graph.time_scale
-    local tick_grid_offset = (tick % C.ticks_per_second) * C.seconds_per_tick
+    local tick_grid_offset = (tick % second) * C.seconds_per_tick
     -- With every added GUI reduce sample rate to protect game UPS
     local ttl = PidCombinatorGui.gui_count()
 
     -- Auto-scale y-axis symmetrically around 0. Grow-only.
-    local visible_ticks = math.ceil(viewport_tile_width / tiles_per_second) * C.ticks_per_second
+    local visible_ticks = math.ceil(viewport_tile_width / tiles_per_second) * second
     local peak = gui_state.graph.peak or 0
     for i = data.first, data.last do
         local sample = data[i]
@@ -478,12 +478,12 @@ local function plot(player_index, gui_state, state, tick, value)
 
     -- Vertical gridlines
     for i = 0, math.floor(viewport_tile_width / tiles_per_second) do
-        local x = 2 * offset.x - (tick_grid_offset + i) * tiles_per_second
+        local x = 2 * offset[1] - (tick_grid_offset + i) * tiles_per_second
         if x >= 0 then
             rendering.draw_line{
                 surface = surface,
-                from = { x, offset.y },
-                to = { x, -offset.y },
+                from = { x, offset[2] },
+                to = { x, -offset[2] },
                 color = C.colors.graph.gridline,
                 width = 1,
                 players = { player_index },
@@ -512,7 +512,7 @@ local function plot(player_index, gui_state, state, tick, value)
         -- Horizontal gridlines
         rendering.draw_line {
             surface = surface,
-            from = { 0, y }, to = { 2 * offset.x, y },
+            from = { 0, y }, to = { 2 * offset[1], y },
             color = gridline_color,
             width = 1,
             players = { player_index },
@@ -523,7 +523,7 @@ local function plot(player_index, gui_state, state, tick, value)
         rendering.draw_text {
             text = grid_value,
             surface = surface,
-            target = { 2 * offset.x - C.graph.label_right_padding, y },
+            target = { 2 * offset[1] - C.graph.label_right_padding, y },
             color = text_color,
             font = "default-semibold",
             scale = 1.0,
@@ -538,7 +538,7 @@ local function plot(player_index, gui_state, state, tick, value)
         rendering.draw_line {
             surface = surface,
             from = { 0, map_y(state.tuner.target, axis_maximum) },
-            to = { 2 * offset.x, map_y(state.tuner.target, axis_maximum) },
+            to = { 2 * offset[1], map_y(state.tuner.target, axis_maximum) },
             gap_length = 0.2,
             dash_length = 0.2,
             color = C.colors.graph.tuning_line,
@@ -551,8 +551,8 @@ local function plot(player_index, gui_state, state, tick, value)
     for i = data.first + 1, data.last do
         local previous_sample = data[i - 1]
         local current_sample = data[i]
-        local previous_x = 2 * offset.x - (tick - previous_sample.tick) * C.seconds_per_tick * tiles_per_second
-        local current_x = 2 * offset.x - (tick - current_sample.tick) * C.seconds_per_tick * tiles_per_second
+        local previous_x = 2 * offset[1] - (tick - previous_sample.tick) * C.seconds_per_tick * tiles_per_second
+        local current_x = 2 * offset[1] - (tick - current_sample.tick) * C.seconds_per_tick * tiles_per_second
 
         -- Setpoint line
         if not PidTuning.is_running(state.tuner) and previous_sample.sp and current_sample.sp then

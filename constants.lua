@@ -1,10 +1,11 @@
+require "__core__.lualib.util"
+
 ---@class Constants
 ---@field debug { show_surface: boolean, show_invisible_frame: boolean }
----@field ticks_per_second integer
 ---@field seconds_per_tick number
 ---@field undo_redo_max_age_ticks integer
 ---@field pid { derivative_lpf_alpha: number, dt_clamp_seconds: number, output_min: integer, output_max: integer, rules: TuningRule[] }
----@field graph { tile_size: integer, viewport: { width: integer, height: integer }, preview: { width: integer, height: integer }, axis_min_scale: number, axis_margin: number, label_right_padding: number, surface_tile_radius: integer, px_per_tile: number, data_retention_seconds: number }
+---@field graph { viewport: { width: integer, height: integer }, preview: { width: integer, height: integer }, axis_min_scale: number, axis_margin: number, label_right_padding: number, surface_tile_radius: integer, px_per_tile: number, data_retention_seconds: number }
 ---@field term_indicator { width_px: integer, height_px: integer, tick_step_px: integer, tick_count: integer, zero_line_width: integer, row_gap_px: integer, surface_origin: { x: integer, y: integer } }
 ---@field terms { key: KComponent, caption: LocalisedString }[]
 ---@field status_visuals table<any, { sprite: string, caption: LocalisedString }>
@@ -16,12 +17,10 @@ C.debug = {
     show_surface = false,
     show_invisible_frame = false,
 }
-
-C.ticks_per_second = 60
-C.seconds_per_tick = 1 / 60
+C.seconds_per_tick = 1 / second
 
 -- Drop undo/redo entries older than this.
-C.undo_redo_max_age_ticks = 60 * 60 * 60 -- 1 hour
+C.undo_redo_max_age_ticks = hour
 
 C.pid = {
     -- Low-pass filter coefficient for the derivative. Smaller - smoother.
@@ -55,7 +54,6 @@ C.pid = {
 }
 
 C.graph = {
-    tile_size = 32,
     viewport = { width = 300, height = 200, },
     preview  = { width = 200, height = 200, },
     -- Grow-only y-axis: never scale below this magnitude.
@@ -67,9 +65,9 @@ C.graph = {
     -- Half-side of the tile square drawn on the hidden graph surface.
     surface_tile_radius = 16,
 }
-C.graph.px_per_tile = 1 / C.graph.tile_size
+C.graph.px_per_tile = util.by_pixel(1 , 0)[1]
 -- Trim samples older than this from the graph buffer.
-C.graph.data_retention_seconds = C.graph.viewport.width / C.graph.tile_size
+C.graph.data_retention_seconds = util.by_pixel(C.graph.viewport.width , 0)[1]
 
 C.term_indicator = {
     width_px = 110,

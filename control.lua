@@ -101,7 +101,7 @@ local function write_output(state, value)
     if state.signals.output then
         set_section_active(section, true)
         -- Clamp value as the game crashes when it goes out of bounds of int32
-        local clamped = math.min(C.pid.output_max, math.max(C.pid.output_min, math.floor(value)))
+        local clamped = util.clamp(math.floor(value), C.pid.output_min, C.pid.output_max)
         if clamped ~= state.last_value then
             section.set_slot(1, {
                 value = {
