@@ -24,3 +24,4 @@ tools/*
 *.svg
 examples
 examples/*
+thumbnail_*.png
