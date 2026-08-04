@@ -1,5 +1,5 @@
 ![Lastest Version](https://img.shields.io/factorio-mod-portal/v/pid-combinator) ![Last Updated](https://img.shields.io/factorio-mod-portal/last-updated/pid-combinator) ![Downloads](https://img.shields.io/factorio-mod-portal/dt/pid-combinator)
-![License](https://img.shields.io/github/license/dmytro-dovg/quick-calculator)
+![License](https://img.shields.io/github/license/dmytro-dovg/pid-combinator)
 
 
 # PID Combinator
