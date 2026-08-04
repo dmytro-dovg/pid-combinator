@@ -396,20 +396,22 @@ local function draw_term_indicator(surface, player_index, ttl, center, term_valu
     }
 
     -- Value bar
-    local max_extent = half_w - inset
-    local raw_extent = term_value * C.graph.px_per_tile
-    local extent = math.max(-max_extent, math.min(max_extent, raw_extent))
-    local bar_left  = math.min(center.x, center.x + extent)
-    local bar_right = math.max(center.x, center.x + extent)
-    rendering.draw_rectangle {
-        surface = surface,
-        left_top     = { bar_left,  inner_bottom },
-        right_bottom = { bar_right, inner_top },
-        filled = true,
-        color = bar_color,
-        players = { player_index },
-        time_to_live = ttl,
-    }
+    if term_value then
+        local max_extent = half_w - inset
+        local raw_extent = term_value * C.graph.px_per_tile
+        local extent = math.max(-max_extent, math.min(max_extent, raw_extent))
+        local bar_left  = math.min(center.x, center.x + extent)
+        local bar_right = math.max(center.x, center.x + extent)
+        rendering.draw_rectangle {
+            surface = surface,
+            left_top     = { bar_left,  inner_bottom },
+            right_bottom = { bar_right, inner_top },
+            filled = true,
+            color = bar_color,
+            players = { player_index },
+            time_to_live = ttl,
+        }
+    end
 
     -- Tick marks
     for i = 1, C.term_indicator.tick_count do
@@ -439,8 +441,24 @@ local function draw_term_indicator(surface, player_index, ttl, center, term_valu
     }
 end
 
----Render one frame of the graph (SP/PV lines, gridlines, axis labels, and
----the PID term indicators) onto the private surface for one player.
+---@param surface LuaSurface
+---@param player_index integer
+---@param ttl uint
+---@param gui_state PidGuiState
+---@param value PidTickResult?
+local function draw_term_indicators(surface, player_index, ttl, gui_state, value)
+    local side_frame = gui_state.controls.side_frame
+    if not (side_frame and side_frame.valid and side_frame.visible) then return end
+    for index, term in ipairs(C.terms) do
+        draw_term_indicator(surface, player_index, ttl,
+            term_indicator_center(index),
+            value and value[term.key],
+            C.colors.terms[term.key .. "_bar"])
+    end
+end
+
+---Render one frame of the graph (SP/PV lines, gridlines, axis labels) onto the
+---private surface for one player.
 ---@param player_index integer
 ---@param gui_state PidGuiState
 ---@param state PidState
@@ -578,18 +596,6 @@ local function plot(player_index, gui_state, state, tick, value)
             time_to_live = ttl,
         }
     end
-
-    -- PID term indicators.
-    -- Skip when the side panel is hidden.
-    local side_frame = gui_state.controls.side_frame
-    if side_frame and side_frame.valid and side_frame.visible then
-        for index, term in ipairs(C.terms) do
-            draw_term_indicator(surface, player_index, ttl,
-                term_indicator_center(index),
-                value[term.key],
-                C.colors.terms[term.key .. "_bar"])
-        end
-    end
 end
 
 ---Re-read the stored settings and sync settings controls.
@@ -661,23 +667,28 @@ function PidCombinatorGui.on_tick(unit_number, state, tick, value)
     update_value_labels(guis, value)
 
     local data = state.graph_data
-    if not data or not value then return end
+    if not data then return end
 
     -- Graph renders at 32px per second. 30hz sampling at 60 UPS is close enough.
-    if tick % 2 == 0 then
+    if value and tick % 2 == 0 then
         List.pushright(data, { tick = tick, value = value.pv, sp = value.sp })
     end
-    if List.length(data) > 1 then
-        -- Trim older data points
-        while List.length(data) > 0 and (tick - data[data.first].tick) * C.seconds_per_tick > C.graph.data_retention_seconds do
-            List.popleft(data)
-        end
-        -- With every added GUI reduce sample rate to protect game UPS
-        local n = PidCombinatorGui.gui_count()
-        if n > 0 and tick % n == 0 then
-            for player_index, gui_state in pairs(guis) do
+    -- Trim older data points.
+    while List.length(data) > 0 and (tick - data[data.first].tick) * C.seconds_per_tick > C.graph.data_retention_seconds do
+        List.popleft(data)
+    end
+
+    -- With every added GUI reduce sample rate to protect game UPS.
+    local n = PidCombinatorGui.gui_count()
+    if n <= 0 or tick % n ~= 0 then return end
+
+    for player_index, gui_state in pairs(guis) do
+        local surface = gui_state.graph.surface
+        if surface and surface.valid then
+            if value ~= nil and List.length(data) > 1 then
                 plot(player_index, gui_state, state, tick, value)
             end
+            draw_term_indicators(surface, player_index, n, gui_state, value)
         end
     end
 end

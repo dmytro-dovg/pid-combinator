@@ -24,7 +24,7 @@ local C = require "constants"
 ---@field filtered_derivative number low-pass-filtered derivative
 ---@field graph_data List<PidGraphSample>
 ---@field tuner PidTuningSession? active autotune session
----@field tune_failure PidTuningFailureReason? failure reason from the last autotune, nil if none
+---@field tune_failure PidTuningFailureReason? failure reason from the last autotune
 
 ---@class PidTickResult
 ---@field output number
