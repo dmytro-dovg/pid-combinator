@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.1
+Date: 2026-08-05
+  Bugfixes:
+    - Fixed auto-tunning bias converging on a value which prevented the actuator form crossing the boundary.
+  Changes:
+    - Changed versionint to accomodate for different Factorio versions. First two numbers of the version are Factorio release and the last is mod version. e.g. 2.1.5 for Factorio 2.1.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.3
 Date: 2026-08-04
   Bugfixes:

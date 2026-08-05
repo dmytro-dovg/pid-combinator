@@ -27,11 +27,11 @@ local C = require "constants"
 ---@field rule TuningRule
 ---@field output_min integer
 ---@field output_max integer
----@field headroom integer bias clamp headroom on each side
 ---@field cycles integer completed cycles so far
 ---@field bias number DC offset of the relay
 ---@field d number relay half-swing
 ---@field d_cap number cap on `d` (never grows past initial value)
+---@field d_min number floor on `d` so the relay keeps crossing the target
 ---@field t_high uint length of the current/last "high" half-period
 ---@field t_low uint length of the current/last "low" half-period
 ---@field t1 uint tick of last rising->falling transition
@@ -49,7 +49,6 @@ local C = require "constants"
 ---@field output_min integer? explicit lower actuator bound
 ---@field output_max integer? explicit upper actuator bound
 ---@field bipolar boolean? if true and output_min not given, uses -output_max
----@field headroom integer?
 ---@field initial_d number?
 
 local PidTuning = {}
@@ -85,7 +84,8 @@ local defaults = {
     -- Having a bipolar default would break on tuning unipolar system.
     output_min = 0,
     output_max = 60,
-    headroom = 0,
+    min_swing_fraction = 0.2,
+    bias_gain = 0.5,
 }
 
 ---@param opts PidTuningOptions
@@ -94,12 +94,12 @@ function PidTuning.new(opts)
     opts = opts or {}
     local output_max = opts.output_max or defaults.output_max
     local output_min = opts.output_min or (opts.bipolar and -output_max) or defaults.output_min
-    local headroom = opts.headroom or defaults.headroom
     local mid = (output_min + output_max) / 2
     local half = (output_max - output_min) / 2
     local target = opts.target or 0
     local initial_d = opts.initial_d or half
     if initial_d > half then initial_d = half end
+    local d_min = math.min(initial_d, half * defaults.min_swing_fraction)
     return {
         state = status(PidTuning.state.not_started),
         target = target,
@@ -110,11 +110,11 @@ function PidTuning.new(opts)
         rule = opts.rule or defaults.rule,
         output_min = output_min,
         output_max = output_max,
-        headroom = headroom,
         cycles = 0,
         bias = mid,
         d = initial_d,
         d_cap = initial_d,
+        d_min = d_min,
         t_high = 0,
         t_low = 0,
         t1 = 0,
@@ -183,12 +183,12 @@ function PidTuning.loop(session, pv, tick)
                     session.state = status(PidTuning.state.done)
                     return 0
                 end
-                -- Bias adjustment
+
                 if total_t > 0 then
                     local delta_t = session.t_high - session.t_low
-                    session.bias = session.bias + session.d * delta_t / total_t
-                    local low = session.output_min + session.headroom
-                    local high = session.output_max - session.headroom
+                    session.bias = session.bias + defaults.bias_gain * session.d * delta_t / total_t
+                    local low = session.output_min + session.d_min
+                    local high = session.output_max - session.d_min
                     if session.bias < low then session.bias = low end
                     if session.bias > high then session.bias = high end
                     session.d = math.min(session.d_cap,
