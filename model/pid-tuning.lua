@@ -79,7 +79,7 @@ end
 local defaults = {
     target_cycles = 5,
     settle_cycles = 1,
-    max_ticks = minute,
+    max_ticks = 5 * minute,
     rule = C.pid.rules[1],
     -- Unipolar by default. Should still work on bipolar setup.
     -- Having a bipolar default would break on tuning unipolar system.
