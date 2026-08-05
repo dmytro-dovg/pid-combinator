@@ -40,6 +40,8 @@ This is where PWM (pulse-width modulation) comes in. It lets us control the pump
 
 ## Further improvements
 
+> Because of fluid rework in 2.1, the following section may not work properly in 2.0.
+
 PWM setup gets us mostly there, but we can still improve the responsiveness of the system by adding a second pump, which will empty the thruster's internal buffer when the PID combinator's output is negative. For this we need two extra pumps and a storage tank.
 
 Build a fuel supply system according to the following schematic:
