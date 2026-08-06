@@ -292,7 +292,8 @@ local function create_surface()
     for _, force in pairs(game.forces) do
         force.set_surface_hidden(surface, not C.debug.show_surface)
     end
-
+    surface.always_day = true
+    surface.freeze_daytime = true
     surface.peaceful_mode = true
     surface.request_to_generate_chunks({0, 0}, 1)
     surface.force_generate_chunk_requests()
