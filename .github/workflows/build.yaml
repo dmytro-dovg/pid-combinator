@@ -1,4 +1,4 @@
-name: Package Blueprint Share
+name: Package
 on:
   push:
     branches:
