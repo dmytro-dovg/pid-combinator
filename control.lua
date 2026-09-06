@@ -584,26 +584,51 @@ local function on_blueprint_settings_pasted(event)
     end
 end
 
+local function get_setup_blueprint(event)
+    local record = event.record
+    if record and
+        record.valid and
+        record.type == "blueprint" then
+        return event.record
+    end
+
+    local stack = event.stack
+    if stack and stack.is_blueprint and stack.valid_for_read then
+        return stack
+    end
+
+    local player = game.get_player(event.player_index)
+    if not player then return nil end
+
+    local blueprint_to_setup = player.blueprint_to_setup
+    if blueprint_to_setup and
+        blueprint_to_setup.valid_for_read then
+        return blueprint_to_setup
+    end
+
+    local cursor_stack = player.cursor_stack
+    if cursor_stack and
+        cursor_stack.valid_for_read and
+        cursor_stack.is_blueprint then
+        return cursor_stack
+    end
+
+    return nil
+end
+
 local function on_player_setup_blueprint(event)
     local mapping = event.mapping.get()
     if not next(mapping) then return end
 
-    local blueprint = event.stack
-    if not (blueprint and blueprint.valid_for_read and blueprint.is_blueprint) then
-        local player = game.get_player(event.player_index)
-        if not player then return end
-        if player.blueprint_to_setup and player.blueprint_to_setup.valid_for_read then
-            blueprint = player.blueprint_to_setup
-        elseif player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.is_blueprint then
-            blueprint = player.cursor_stack
-        else
-            return
-        end
-    end
-
+    local blueprint = get_setup_blueprint(event)
     if not blueprint then return end
+
+    local count = blueprint.get_blueprint_entity_count()
+
     for blueprint_index, entity in pairs(mapping) do
-        if entity.valid and entity.name == "pid-combinator" then
+        if blueprint_index <= count and
+            entity.valid and
+            entity.name == "pid-combinator" then
             local source = storage.pid and storage.pid[entity.unit_number]
             if source then
                 local pid_settings = {}
