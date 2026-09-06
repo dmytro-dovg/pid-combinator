@@ -125,7 +125,7 @@ end
 ---@return LuaEntity?
 local function create_output_for(entity)
     local surface = entity.surface
-    local hidden = surface.create_entity{
+    local hidden = surface.create_entity {
         name = "pid-combinator-output",
         position = entity.position,
         force = entity.force,
@@ -134,7 +134,7 @@ local function create_output_for(entity)
     if not hidden then return end
     hidden.destructible = false
     hidden.operable = false
-    for _, wire_type in ipairs({"red", "green"}) do
+    for _, wire_type in ipairs({ "red", "green" }) do
         local pid_combinator_connector = entity.get_wire_connector(connector_id.output[wire_type], true)
         local output_combinator_connector = hidden.get_wire_connector(connector_id.input[wire_type], true)
         if pid_combinator_connector and output_combinator_connector then
@@ -165,7 +165,7 @@ local function setup_combinator(entity, settings)
     storage.pid[entity.unit_number] = {
         entity = entity,
         output_entity = output_entity,
-        pending_connection_changes = { },
+        pending_connection_changes = {},
         -- PID state
         integral = 0,
         prev_tick = nil,
@@ -200,8 +200,11 @@ local function read_signal(entity, signal, use_red, use_green)
 
     if red_id and green_id then
         return entity.get_signal(signal, red_id, green_id) or 0
-    elseif red_id or green_id then
-        return entity.get_signal(signal, red_id or green_id) or 0
+    end
+    local either_id = red_id or green_id
+
+    if either_id then
+        return entity.get_signal(signal, either_id) or 0
     end
     return 0
 end
@@ -217,8 +220,7 @@ local function stash_fast_replace(entity, snapshot)
             storage.fast_replace_stash[key] = nil
         end
     end
-    storage.fast_replace_stash[position_key(entity.surface.index, entity.position)] =
-        { settings = snapshot, tick = game.tick }
+    storage.fast_replace_stash[position_key(entity.surface.index, entity.position)] = { settings = snapshot, tick = game.tick }
 end
 
 local function pop_fast_replace(entity)
@@ -246,8 +248,7 @@ local function cache_put(cache, entity, snapshot)
             cache[key] = nil
         end
     end
-    cache[position_key(entity.surface.index, entity.position)] =
-        { settings = snapshot, tick = game.tick }
+    cache[position_key(entity.surface.index, entity.position)] = { settings = snapshot, tick = game.tick }
 end
 
 local function cache_pop(cache, surface_index, position)
@@ -336,7 +337,7 @@ local function on_removed(event)
             name = "pid-combinator",
         }) do
             if pid.valid then
-                pid.destroy{ raise_destroy = true }
+                pid.destroy { raise_destroy = true }
             end
         end
         return
@@ -666,7 +667,9 @@ local function process_pid(state, tick)
     local dt = (tick - prev_tick) * C.seconds_per_tick
     if dt > C.pid.dt_clamp_seconds then dt = C.pid.dt_clamp_seconds end
     -- Safeguard against abnormal ticks
-    if dt <= 0 then state.prev_tick = tick; return end
+    if dt <= 0 then
+        state.prev_tick = tick; return
+    end
     state.prev_tick = tick
 
     -- Clamp integral to prevent windup
@@ -713,7 +716,7 @@ local function on_tick(event)
             close_guis(unit_number)
             storage.pid[unit_number] = nil
         elseif not state.output_entity.valid then
-            state.entity.destroy{ raise_destroy = true }
+            state.entity.destroy { raise_destroy = true }
         else
             local value = process_pid(state, event.tick)
             PidGui.on_tick(unit_number, state, event.tick, value)
@@ -725,15 +728,15 @@ end
 -- Events
 -- ============================================================================
 
-local pid_filter = {{filter = "name", name = "pid-combinator"}}
+local pid_filter = { { filter = "name", name = "pid-combinator" } }
 local built_filter = {
-    {filter = "name", name = "pid-combinator"},
-    {filter = "ghost_name", name = "pid-combinator", mode = "or"},
+    { filter = "name", name = "pid-combinator" },
+    { filter = "ghost_name", name = "pid-combinator", mode = "or" },
 }
 local removed_filter = {
-    {filter = "name", name = "pid-combinator"},
-    {filter = "name", name = "pid-combinator-output", mode = "or"},
-    {filter = "ghost_name", name = "pid-combinator", mode = "or"},
+    { filter = "name", name = "pid-combinator" },
+    { filter = "name", name = "pid-combinator-output", mode = "or" },
+    { filter = "ghost_name", name = "pid-combinator", mode = "or" },
 }
 
 local on_built_events = {
@@ -765,7 +768,7 @@ end
 if defines.events.on_blueprint_settings_pasted then
     script.on_event(defines.events.on_blueprint_settings_pasted, on_blueprint_settings_pasted)
 end
-script.on_event(defines.events.on_post_entity_died, on_post_entity_died, {{filter = "type", type = "arithmetic-combinator"}})
+script.on_event(defines.events.on_post_entity_died, on_post_entity_died, { { filter = "type", type = "arithmetic-combinator" } })
 script.on_event(defines.events.on_entity_cloned, on_entity_cloned)
 script.on_event(defines.events.on_undo_applied, on_undo_applied)
 script.on_event(defines.events.on_redo_applied, on_redo_applied)
